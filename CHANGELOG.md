@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.2
+- Customisable approval and payment email templates (subject and WYSIWYG body) in Settings → Email notifications, with placeholders and safe HTML sanitising.
+- Settings screen sections are grouped into six tabs with one sticky Save action, a remembered last tab and no-JavaScript fallback.
+
 ## 0.13.1
 - Settings screen sections are grouped into tabs with a single Save action, instead of one long page.
 
