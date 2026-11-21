@@ -30,6 +30,7 @@ class MMS_Emails {
 			'approved' => __( 'Application approved — payment pending', 'mms-membership' ),
 			'payment'  => __( 'Payment received — receipt ready', 'mms-membership' ),
 			'account'  => __( 'Member account — login details', 'mms-membership' ),
+			'password' => __( 'Member password — reset by admin', 'mms-membership' ),
 		);
 	}
 
@@ -69,6 +70,16 @@ class MMS_Emails {
 					. '<p>' . esc_html__( 'A member account has been created for {company_name}. Use the login details below to sign in to the member portal.', 'mms-membership' ) . '</p>'
 					. '<p>' . esc_html__( 'For your security, please change your password after signing in.', 'mms-membership' ) . '</p>',
 			),
+			'password' => array(
+				'subject' => __( 'Your MACM member password has been reset — {reference}', 'mms-membership' ),
+				'body'    => '<p>' . sprintf(
+					/* translators: %s: Person In Charge name */
+					esc_html__( 'Dear %s,', 'mms-membership' ),
+					'{name}'
+				) . '</p>'
+					. '<p>' . esc_html__( 'The password for your member account has been reset by MACM. Use the login details below to sign in to the member portal.', 'mms-membership' ) . '</p>'
+					. '<p>' . esc_html__( 'If you did not expect this change, contact MACM immediately.', 'mms-membership' ) . '</p>',
+			),
 		);
 	}
 
@@ -99,10 +110,10 @@ class MMS_Emails {
 			);
 		}
 
-		if ( 'account' === $key ) {
+		if ( in_array( $key, array( 'account', 'password' ), true ) ) {
 			$common += array(
 				'{username}' => __( 'Member username', 'mms-membership' ),
-				'{password}' => __( 'Temporary password', 'mms-membership' ),
+				'{password}' => __( 'New or temporary password', 'mms-membership' ),
 			);
 		}
 

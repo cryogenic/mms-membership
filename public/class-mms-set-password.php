@@ -58,6 +58,9 @@ class MMS_Set_Password {
 	 */
 	public function render() {
 		wp_enqueue_style( 'mms-public', MMS_MEMBERSHIP_URL . 'assets/css/mms-public.css', array(), MMS_MEMBERSHIP_VERSION );
+		wp_enqueue_style( 'mms-login', MMS_MEMBERSHIP_URL . 'assets/css/mms-login.css', array( 'mms-public' ), MMS_MEMBERSHIP_VERSION );
+		wp_enqueue_style( 'mms-set-password', MMS_MEMBERSHIP_URL . 'assets/css/mms-set-password.css', array( 'mms-login' ), MMS_MEMBERSHIP_VERSION );
+		wp_enqueue_script( 'mms-set-password', MMS_MEMBERSHIP_URL . 'assets/js/mms-set-password.js', array(), MMS_MEMBERSHIP_VERSION, true );
 
 		$done = isset( $_GET['mms_pw'] ) && 'done' === sanitize_key( wp_unslash( $_GET['mms_pw'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 

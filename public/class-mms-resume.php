@@ -263,7 +263,7 @@ class MMS_Resume {
 		}
 
 		$meta      = MMS_Applications::get_meta( $application['id'] );
-		$reference = '' !== $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
+		$reference = '' !== (string) $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
 		$company   = isset( $meta['company_name'] ) ? $meta['company_name'] : '';
 
 		$body = array(

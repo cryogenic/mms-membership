@@ -192,7 +192,7 @@ class MMS_Payments {
 		}
 
 		$settings    = self::settings();
-		$reference   = '' !== $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
+		$reference   = '' !== (string) $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
 		$invoice_row = self::pending_invoice( $application['id'], $kind, true );
 		$amount_rm   = $invoice_row ? (float) $invoice_row['amount'] : round( (float) $type['fee'], 2 );
 		$currency    = $invoice_row ? $invoice_row['currency'] : ( isset( $type['currency'] ) ? $type['currency'] : 'MYR' );
@@ -370,7 +370,7 @@ class MMS_Payments {
 			self::respond( 404, 'UNKNOWN APPLICATION' );
 		}
 
-		$reference = '' !== $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
+		$reference = '' !== (string) $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
 		if ( $order !== $reference ) {
 			self::log_invalid_callback( $bill, 'order id mismatch' );
 			self::respond( 403, 'ORDER MISMATCH' );
@@ -1038,7 +1038,7 @@ class MMS_Payments {
 		$count = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE application_id = %d", (int) $application['id'] )
 		);
-		$base  = '' !== $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
+		$base  = '' !== (string) $application['reference'] ? $application['reference'] : 'APP-' . (int) $application['id'];
 
 		return $base . '-' . ( $count + 1 );
 	}
@@ -1095,7 +1095,7 @@ class MMS_Payments {
 	private static function send_receipt( $application, $type, $payment, $number, $start, $expires, $is_renewal = false ) {
 		$meta  = MMS_Applications::get_meta( $application['id'] );
 		$email = isset( $meta['pic_email'] ) ? $meta['pic_email'] : '';
-		$ref   = '' !== $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
+		$ref   = '' !== (string) $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
 
 		if ( ! $email || ! is_email( $email ) ) {
 			return;

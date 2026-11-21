@@ -53,6 +53,9 @@ class MMS_Public {
 		require_once MMS_MEMBERSHIP_DIR . 'public/class-mms-portal.php';
 		MMS_Portal::instance();
 
+		require_once MMS_MEMBERSHIP_DIR . 'public/class-mms-directory.php';
+		MMS_Directory::instance();
+
 		MMS_Members::init_hooks();
 		MMS_Payments::init();
 		MMS_Certificate::init();

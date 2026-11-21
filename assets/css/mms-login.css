@@ -1,0 +1,599 @@
+/*
+ * MMS member login — premium split layout.
+ * Scoped to .mms-login-shell so it cannot leak into other MMS screens.
+ */
+
+.mms-login-shell {
+	--login-navy: #0b1f52;
+	--login-blue: #143499;
+	--login-red: #ed1b45;
+	--login-ink: #101a33;
+	--login-muted: #5c6580;
+	--login-line: #e2e7f2;
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+	max-width: 1060px;
+	margin: 36px auto 56px;
+	border: 1px solid #e4e9f4;
+	border-radius: 24px;
+	background: #fff;
+	overflow: hidden;
+	box-shadow: 0 2px 6px rgba(11, 31, 82, 0.05), 0 34px 80px rgba(11, 31, 82, 0.16);
+	color: var(--login-ink);
+	font-size: 16px;
+	line-height: 1.6;
+}
+
+.mms-login-shell * {
+	box-sizing: border-box;
+}
+
+.mms-login-brand,
+.mms-login-panel {
+	min-width: 0;
+}
+
+.mms-login-shell p {
+	margin: 0;
+}
+
+/* Brand panel */
+.mms-login-brand {
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 40px;
+	padding: 52px 48px 40px;
+	color: #fff;
+	background:
+		radial-gradient(120% 130% at 100% 0%, rgba(237, 27, 69, 0.38) 0%, rgba(237, 27, 69, 0) 50%),
+		radial-gradient(90% 90% at 0% 100%, rgba(41, 94, 255, 0.35) 0%, rgba(41, 94, 255, 0) 55%),
+		linear-gradient(150deg, #081740 0%, #102b78 55%, #143499 100%);
+}
+
+.mms-login-brand::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+	background-size: 44px 44px;
+	mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
+	-webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
+	pointer-events: none;
+}
+
+.mms-login-brand-main {
+	position: relative;
+	z-index: 1;
+}
+
+.mms-login-logo {
+	display: inline-flex;
+	align-items: center;
+	padding: 10px 16px;
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.mms-login-logo img {
+	display: block;
+	width: 172px;
+	height: auto;
+}
+
+.mms-login-kicker {
+	margin: 30px 0 0 !important;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: #ff9fb3;
+}
+
+.mms-login-brand-title {
+	margin: 10px 0 0 !important;
+	font-size: 34px;
+	line-height: 1.18;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: #fff;
+}
+
+.mms-login-brand-text {
+	margin: 14px 0 0 !important;
+	max-width: 34ch;
+	font-size: 15px;
+	line-height: 1.65;
+	color: rgba(255, 255, 255, 0.78);
+}
+
+.mms-login-points {
+	list-style: none;
+	margin: 30px 0 0 !important;
+	padding: 0 !important;
+	display: grid;
+	gap: 12px;
+}
+
+.mms-login-points li {
+	position: relative;
+	padding-left: 30px;
+	font-size: 14px;
+	line-height: 1.5;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.mms-login-points li::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 1px;
+	width: 18px;
+	height: 18px;
+	border: 1px solid rgba(255, 255, 255, 0.32);
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.16);
+}
+
+.mms-login-points li::after {
+	content: "";
+	position: absolute;
+	left: 6px;
+	top: 6px;
+	width: 7px;
+	height: 4px;
+	border-left: 2px solid #fff;
+	border-bottom: 2px solid #fff;
+	transform: rotate(-45deg);
+}
+
+.mms-login-trust {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 12px;
+	letter-spacing: 0.02em;
+	color: rgba(255, 255, 255, 0.66);
+}
+
+.mms-login-trust-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #5ee0a0;
+	box-shadow: 0 0 0 4px rgba(94, 224, 160, 0.18);
+}
+
+/* Form panel */
+.mms-login-panel {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	padding: 52px 48px;
+	background: #fff;
+}
+
+.mms-login-eyebrow {
+	margin: 0 0 8px !important;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--login-blue);
+}
+
+.mms-login-title {
+	margin: 0 0 8px !important;
+	font-size: 29px;
+	line-height: 1.25;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: var(--login-navy);
+}
+
+.mms-login-sub {
+	margin: 0 0 26px !important;
+	font-size: 14.5px;
+	line-height: 1.6;
+	color: var(--login-muted);
+}
+
+.mms-login-notice {
+	margin: 0 0 20px;
+	padding: 11px 14px;
+	border-left: 3px solid var(--login-red);
+	border-radius: 8px;
+	background: #fff1f4;
+	color: #8a1233;
+	font-size: 13.5px;
+	line-height: 1.5;
+}
+
+.mms-login-notice p {
+	margin: 0 !important;
+	color: inherit;
+}
+
+.mms-login-form {
+	display: grid;
+	gap: 16px;
+}
+
+.mms-login-field {
+	display: grid;
+	gap: 7px;
+}
+
+.mms-login-field label {
+	font-size: 11.5px;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: #46506b;
+}
+
+.mms-login-field input[type="text"],
+.mms-login-field input[type="email"],
+.mms-login-field input[type="password"] {
+	width: 100%;
+	height: 50px;
+	padding: 0 15px;
+	border: 1px solid var(--login-line);
+	border-radius: 11px;
+	background: #fbfcff;
+	color: var(--login-ink);
+	font-family: inherit;
+	font-size: 15px;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.mms-login-field input[type="text"]:focus,
+.mms-login-field input[type="email"]:focus,
+.mms-login-field input[type="password"]:focus {
+	border-color: var(--login-blue);
+	background: #fff;
+	box-shadow: 0 0 0 4px rgba(20, 52, 153, 0.12);
+	outline: none;
+}
+
+.mms-login-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin: 2px 0;
+}
+
+.mms-login-remember {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13.5px;
+	color: var(--login-muted);
+	cursor: pointer;
+}
+
+.mms-login-remember input {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	accent-color: var(--login-blue);
+}
+
+.mms-login-forgot {
+	font-size: 13.5px;
+	font-weight: 600;
+	color: var(--login-blue) !important;
+	text-decoration: none;
+}
+
+.mms-login-forgot:hover,
+.mms-login-forgot:focus {
+	text-decoration: underline;
+}
+
+.mms-login-submit {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 52px;
+	border: 0;
+	border-radius: 11px;
+	background: linear-gradient(135deg, #143499 0%, #0b2a7a 100%);
+	box-shadow: 0 12px 24px rgba(20, 52, 153, 0.24);
+	color: #fff !important;
+	font-family: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mms-login-submit:hover,
+.mms-login-submit:focus {
+	transform: translateY(-1px);
+	box-shadow: 0 16px 30px rgba(20, 52, 153, 0.3);
+	color: #fff !important;
+}
+
+.mms-login-divider {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 24px 0 16px;
+	color: #98a0b5;
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.mms-login-divider::before,
+.mms-login-divider::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--login-line);
+}
+
+.mms-login-register {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	height: 48px;
+	border: 1px solid rgba(237, 27, 69, 0.38);
+	border-radius: 11px;
+	background: #fff;
+	color: var(--login-red) !important;
+	font-size: 14.5px;
+	font-weight: 600;
+	text-decoration: none;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.mms-login-register:hover,
+.mms-login-register:focus {
+	border-color: var(--login-red);
+	background: #fff4f6;
+	color: var(--login-red) !important;
+}
+
+.mms-login-register span {
+	transition: transform 0.15s ease;
+}
+
+.mms-login-register:hover span {
+	transform: translateX(3px);
+}
+
+.mms-login-note {
+	margin: 18px 0 0 !important;
+	font-size: 12.5px;
+	line-height: 1.6;
+	color: #8b93a7;
+}
+
+.mms-login-actions {
+	display: grid;
+	gap: 12px;
+	margin-top: 6px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+	.mms-login-shell {
+		grid-template-columns: minmax(0, 1fr);
+		max-width: 620px;
+	}
+
+	.mms-login-brand {
+		padding: 36px 34px 30px;
+		gap: 26px;
+	}
+
+	.mms-login-brand-title {
+		font-size: 28px;
+	}
+
+	.mms-login-points {
+		margin-top: 22px !important;
+	}
+
+	.mms-login-panel {
+		padding: 36px 34px 40px;
+	}
+}
+
+@media (max-width: 600px) {
+	.mms-login-shell {
+		margin: 16px auto 32px;
+		border-radius: 18px;
+	}
+
+	.mms-login-brand {
+		padding: 28px 24px 24px;
+	}
+
+	.mms-login-logo img {
+		width: 140px;
+	}
+
+	.mms-login-brand-title {
+		font-size: 26px;
+	}
+
+	.mms-login-brand-text {
+		font-size: 14px;
+	}
+
+	.mms-login-panel {
+		padding: 28px 24px 32px;
+	}
+
+	.mms-login-title {
+		font-size: 25px;
+	}
+
+	.mms-login-row {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+/* Password reset lightbox */
+.mms-reset-modal[hidden] {
+	display: none;
+}
+
+.mms-reset-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+}
+
+.mms-reset-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(11, 31, 82, 0.62);
+	backdrop-filter: blur(3px);
+	animation: mms-reset-fade 0.22s ease-out;
+}
+
+.mms-reset-dialog {
+	position: relative;
+	width: 100%;
+	max-width: 420px;
+	padding: 36px 34px 28px;
+	background: #ffffff;
+	border-radius: 20px;
+	box-shadow: 0 32px 70px rgba(11, 31, 82, 0.35);
+	animation: mms-reset-pop 0.26s cubic-bezier(0.22, 0.9, 0.32, 1.05);
+}
+
+.mms-reset-close {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 34px;
+	height: 34px;
+	border: 0;
+	border-radius: 50%;
+	background: #eef1f8;
+	color: #101a33;
+	font-size: 20px;
+	line-height: 1;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mms-reset-close:hover,
+.mms-reset-close:focus-visible {
+	background: #e2e7f2;
+	color: #101a33;
+}
+
+.mms-reset-title {
+	margin: 6px 0 8px;
+	font-size: 23px;
+	line-height: 1.25;
+	color: #101a33;
+}
+
+.mms-reset-text {
+	margin: 0 0 22px;
+	font-size: 14px;
+	line-height: 1.6;
+	color: #5c6580;
+}
+
+.mms-reset-form .mms-login-field {
+	margin-bottom: 16px;
+}
+
+.mms-reset-message {
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	border-radius: 10px;
+	font-size: 13.5px;
+	line-height: 1.5;
+	border-left: 3px solid transparent;
+}
+
+.mms-reset-message.is-success {
+	background: #edf9f1;
+	border-left-color: #1f9d55;
+	color: #14663a;
+}
+
+.mms-reset-message.is-error {
+	background: #fdeef1;
+	border-left-color: #ed1b45;
+	color: #a3132f;
+}
+
+.mms-reset-back {
+	margin: 18px 0 0;
+	text-align: center;
+}
+
+.mms-reset-backlink {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: #143499;
+	font-size: 13.5px;
+	font-weight: 600;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.mms-modal-open {
+	overflow: hidden;
+}
+
+@keyframes mms-reset-fade {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes mms-reset-pop {
+	from {
+		opacity: 0;
+		transform: translateY(14px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@media (max-width: 480px) {
+	.mms-reset-modal {
+		padding: 16px;
+	}
+
+	.mms-reset-dialog {
+		padding: 30px 22px 22px;
+		border-radius: 16px;
+	}
+}

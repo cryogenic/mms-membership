@@ -176,7 +176,7 @@ class MMS_Applications {
 		$inserted = $wpdb->insert(
 			MMS_DB::table( MMS_DB::APPLICATION ),
 			array(
-				'reference'       => '',
+				'reference'       => null,
 				'membership_type' => $membership_type,
 				'status'          => MMS_Status::DRAFT,
 				'created_at'      => $now,

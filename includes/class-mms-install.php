@@ -24,6 +24,7 @@ class MMS_Install {
 	 */
 	public static function activate() {
 		self::install_tables();
+		self::normalize_draft_references();
 		self::install_roles();
 		self::install_default_options();
 		self::migrate_default_labels();
@@ -85,6 +86,25 @@ class MMS_Install {
 	}
 
 	/**
+	 * Drafts keep reference NULL until submitted, so the UNIQUE index allows
+	 * more than one draft.
+	 *
+	 * @return void
+	 */
+	private static function normalize_draft_references() {
+		global $wpdb;
+
+		$table = MMS_DB::table( MMS_DB::APPLICATION );
+		$field = $wpdb->get_row( "SHOW COLUMNS FROM {$table} LIKE 'reference'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		if ( $field && 'NO' === $field->Null ) {
+			$wpdb->query( "ALTER TABLE {$table} MODIFY reference varchar(32) DEFAULT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		$wpdb->query( "UPDATE {$table} SET reference = NULL WHERE reference = ''" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
 	 * Cipta / kemas kini 5 jadual MMS menggunakan dbDelta().
 	 *
 	 * @return void
@@ -105,7 +125,7 @@ class MMS_Install {
 
 		$sql[] = "CREATE TABLE {$application} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			reference varchar(32) NOT NULL DEFAULT '',
+			reference varchar(32) DEFAULT NULL,
 			membership_type varchar(50) NOT NULL DEFAULT '',
 			status varchar(20) NOT NULL DEFAULT 'draft',
 			applicant_user_id bigint(20) unsigned NOT NULL DEFAULT 0,

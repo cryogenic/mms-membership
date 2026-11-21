@@ -2,6 +2,26 @@
 ( function ( $ ) {
 	'use strict';
 
+	function randomPassword() {
+		var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+		var result = '';
+
+		if ( window.crypto && window.crypto.getRandomValues ) {
+			var values = new Uint32Array( 16 );
+			window.crypto.getRandomValues( values );
+
+			$.each( values, function ( i, value ) {
+				result += chars.charAt( value % chars.length );
+			} );
+		} else {
+			for ( var i = 0; i < 16; i++ ) {
+				result += chars.charAt( Math.floor( Math.random() * chars.length ) );
+			}
+		}
+
+		return result;
+	}
+
 	function reindex( $table, group ) {
 		var re = new RegExp( group + '\\[\\d+\\]', 'g' );
 
@@ -277,23 +297,7 @@
 			} );
 
 			$( '#mms-generate-password' ).on( 'click', function () {
-				var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-				var result = '';
-
-				if ( window.crypto && window.crypto.getRandomValues ) {
-					var values = new Uint32Array( 16 );
-					window.crypto.getRandomValues( values );
-
-					$.each( values, function ( i, value ) {
-						result += chars.charAt( value % chars.length );
-					} );
-				} else {
-					for ( var i = 0; i < 16; i++ ) {
-						result += chars.charAt( Math.floor( Math.random() * chars.length ) );
-					}
-				}
-
-				$password.val( result ).trigger( 'focus' );
+				$password.val( randomPassword() ).trigger( 'focus' );
 			} );
 
 			$accountToggle.on( 'change', toggleAccountFields );
@@ -314,5 +318,107 @@
 				}
 			} );
 		}
+
+		var initUsernameCheck = function ( $form, userId ) {
+			var $username = $form.find( 'input[name="user_login"]' );
+			var $status = $form.find( '.mms-username-status' );
+
+			if ( ! $username.length || ! $status.length ) {
+				return;
+			}
+
+			if ( ! window.mmsAdmin ) {
+				return;
+			}
+
+			var usernameTimer = null;
+			var lastQuery = '';
+
+			var setUsernameStatus = function ( state, text ) {
+				$status.removeClass( 'is-ok is-bad is-checking' ).addClass( state ? 'is-' + state : '' ).text( text );
+			};
+
+			var checkUsername = function () {
+				var value = $.trim( $username.val() );
+
+				if ( ! value ) {
+					setUsernameStatus( '', '' );
+					return;
+				}
+
+				if ( value === lastQuery ) {
+					return;
+				}
+
+				lastQuery = value;
+				setUsernameStatus( 'checking', window.mmsAdmin.checkingText );
+
+				$.post( window.mmsAdmin.ajaxUrl, {
+					action: 'mms_check_username',
+					nonce: window.mmsAdmin.usernameNonce,
+					username: value,
+					user_id: userId || 0
+				} ).done( function ( response ) {
+					if ( $.trim( $username.val() ) !== value ) {
+						return;
+					}
+
+					if ( ! response || ! response.success || ! response.data ) {
+						setUsernameStatus( 'bad', window.mmsAdmin.errorText );
+						return;
+					}
+
+					$username
+						.attr( 'data-mms-available', response.data.available ? '1' : '0' )
+						.attr( 'data-mms-checked', response.data.username );
+
+					setUsernameStatus( response.data.available ? 'ok' : 'bad', response.data.message );
+				} ).fail( function () {
+					setUsernameStatus( 'bad', window.mmsAdmin.errorText );
+				} );
+			};
+
+			$username.on( 'input', function () {
+				lastQuery = '';
+				$username.removeAttr( 'data-mms-available data-mms-checked' );
+				window.clearTimeout( usernameTimer );
+
+				if ( ! $.trim( $username.val() ) ) {
+					setUsernameStatus( '', '' );
+					return;
+				}
+
+				setUsernameStatus( 'checking', window.mmsAdmin.checkingText );
+				usernameTimer = window.setTimeout( checkUsername, 400 );
+			} );
+
+			$form.on( 'submit', function ( event ) {
+				if ( '0' === $username.attr( 'data-mms-available' ) ) {
+					event.preventDefault();
+					$username.trigger( 'focus' );
+				}
+			} );
+
+			if ( window.mmsAdmin ) {
+				checkUsername();
+			} else {
+				setUsernameStatus( '', '' );
+			}
+		};
+
+		$( '.mms-member-create-form, .mms-member-edit-form' ).each( function () {
+			var $form = $( this );
+			var userId = parseInt( $form.attr( 'data-mms-user-id' ), 10 );
+
+			initUsernameCheck( $form, isNaN( userId ) ? 0 : userId );
+		} );
+
+		$( '.mms-member-password-form' ).each( function () {
+			var $form = $( this );
+
+			$form.find( '.mms-generate-member-password' ).on( 'click', function () {
+				$form.find( 'input[name="new_password"]' ).val( randomPassword() ).trigger( 'focus' );
+			} );
+		} );
 	} );
 } )( jQuery );

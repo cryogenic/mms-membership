@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin review panel: applications list, filters, detail screen and document review.
+ * Admin review panel: applications list, filters, detail screen, document review and member passwords.
  *
  * @package MMS_Membership
  */
@@ -20,6 +20,9 @@ class MMS_Admin_Applications {
 	const NONCE_CERT     = 'mms_admin_certificate';
 	const NONCE_BULK     = 'mms_application_bulk';
 	const NONCE_PAYMENT  = 'mms_manual_payment';
+	const NONCE_PASSWORD = 'mms_admin_member_password';
+	const NONCE_ACCOUNT  = 'mms_admin_member_account';
+	const NONCE_UPDATE   = 'mms_admin_member_account_update';
 	const PER_PAGE       = 20;
 
 	/**
@@ -34,6 +37,9 @@ class MMS_Admin_Applications {
 		add_action( 'admin_post_mms_admin_certificate', array( __CLASS__, 'handle_certificate' ) );
 		add_action( 'admin_post_mms_bulk_action', array( __CLASS__, 'handle_bulk' ) );
 		add_action( 'admin_post_mms_manual_payment', array( __CLASS__, 'handle_manual_payment' ) );
+		add_action( 'admin_post_mms_admin_member_password', array( __CLASS__, 'handle_member_password' ) );
+		add_action( 'admin_post_mms_admin_member_create', array( __CLASS__, 'handle_member_account_create' ) );
+		add_action( 'admin_post_mms_admin_member_update', array( __CLASS__, 'handle_member_account_update' ) );
 	}
 
 	/**
@@ -252,6 +258,298 @@ class MMS_Admin_Applications {
 	}
 
 	/**
+	 * Replace the linked member password and email the new login details.
+	 *
+	 * @return void
+	 */
+	public static function handle_member_password() {
+		if ( ! current_user_can( 'mms_review_application' ) ) {
+			wp_die( esc_html__( 'You do not have permission to change member passwords.', 'mms-membership' ), 403 );
+		}
+
+		check_admin_referer( self::NONCE_PASSWORD );
+
+		$application_id = isset( $_POST['application_id'] ) ? absint( $_POST['application_id'] ) : 0;
+		$application    = MMS_Applications::get( $application_id );
+
+		if ( ! $application ) {
+			wp_die( esc_html__( 'Application not found.', 'mms-membership' ), 404 );
+		}
+
+		$user = ! empty( $application['member_user_id'] ) ? get_userdata( (int) $application['member_user_id'] ) : false;
+
+		if ( ! $user ) {
+			self::back_to( $application_id, 'member_password_no_account' );
+		}
+
+		if ( user_can( $user, 'mms_review_application' ) ) {
+			self::back_to( $application_id, 'member_password_admin' );
+		}
+
+		// Passwords keep every character the admin typed; only the length is enforced.
+		$password = isset( $_POST['new_password'] ) && is_string( $_POST['new_password'] )
+			? (string) wp_unslash( $_POST['new_password'] )
+			: '';
+
+		if ( strlen( $password ) < 8 || strlen( $password ) > 200 ) {
+			self::back_to( $application_id, 'member_password_short' );
+		}
+
+		MMS_Members::reset_password( $user, $password );
+
+		MMS_Applications::log(
+			$application_id,
+			'password_reset_by_admin',
+			sprintf(
+				/* translators: 1: administrator display name, 2: member username */
+				__( 'Password reset by %1$s for member account %2$s.', 'mms-membership' ),
+				wp_get_current_user()->display_name,
+				$user->user_login
+			),
+			get_current_user_id()
+		);
+
+		$meta = MMS_Applications::get_meta( $application_id );
+		$sent = self::send_password_email( $application, $meta, $user, $password );
+
+		MMS_Applications::log(
+			$application_id,
+			$sent ? 'email_sent' : 'email_failed',
+			$sent
+				/* translators: %s: recipient email */
+				? sprintf( __( 'New password emailed to %s.', 'mms-membership' ), $user->user_email )
+				/* translators: %s: recipient email */
+				: sprintf( __( 'New password email could not be sent to %s — check the site mail configuration.', 'mms-membership' ), $user->user_email )
+		);
+
+		self::back_to( $application_id, $sent ? 'member_password_saved' : 'member_password_email_failed' );
+	}
+
+	/**
+	 * Create a member account for a company that has none, using an admin-set password.
+	 *
+	 * @return void
+	 */
+	public static function handle_member_account_create() {
+		if ( ! current_user_can( 'mms_review_application' ) ) {
+			wp_die( esc_html__( 'You do not have permission to create member accounts.', 'mms-membership' ), 403 );
+		}
+
+		check_admin_referer( self::NONCE_ACCOUNT );
+
+		$application_id = isset( $_POST['application_id'] ) ? absint( $_POST['application_id'] ) : 0;
+		$application    = MMS_Applications::get( $application_id );
+
+		if ( ! $application ) {
+			wp_die( esc_html__( 'Application not found.', 'mms-membership' ), 404 );
+		}
+
+		if ( ! empty( $application['member_user_id'] ) ) {
+			self::back_to( $application_id, 'member_account_exists' );
+		}
+
+		$meta  = MMS_Applications::get_meta( $application_id );
+		$email = isset( $_POST['account_email'] ) ? sanitize_email( wp_unslash( $_POST['account_email'] ) ) : '';
+
+		if ( '' === $email || ! is_email( $email ) ) {
+			self::back_to( $application_id, 'member_account_invalid' );
+		}
+
+		// Use the admin-entered account email without changing the application's PIC details.
+		$meta['pic_email'] = $email;
+
+		$login = isset( $_POST['user_login'] ) ? MMS_Members::normalize_login( wp_unslash( $_POST['user_login'] ) ) : '';
+
+		// Passwords keep every character the admin typed; only the length is enforced.
+		$password = isset( $_POST['new_password'] ) && is_string( $_POST['new_password'] )
+			? (string) wp_unslash( $_POST['new_password'] )
+			: '';
+
+		if ( strlen( $password ) < 8 || strlen( $password ) > 200 ) {
+			self::back_to( $application_id, 'member_password_short' );
+		}
+
+		$result = MMS_Admin_Company::create_account(
+			$application_id,
+			$meta,
+			array(
+				'user_login' => $login,
+				'user_pass'  => $password,
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			$notice = 'mms_username_taken' === $result->get_error_code() ? 'member_account_username_taken' : 'member_account_failed';
+			self::back_to( $application_id, $notice );
+		}
+
+		self::back_to( $application_id, $result['sent'] ? 'member_account_created' : 'member_account_email_failed' );
+	}
+
+	/**
+	 * Update the username and email of an existing member account.
+	 *
+	 * @return void
+	 */
+	public static function handle_member_account_update() {
+		if ( ! current_user_can( 'mms_review_application' ) ) {
+			wp_die( esc_html__( 'You do not have permission to edit member accounts.', 'mms-membership' ), 403 );
+		}
+
+		check_admin_referer( self::NONCE_UPDATE );
+
+		$application_id = isset( $_POST['application_id'] ) ? absint( $_POST['application_id'] ) : 0;
+		$application    = MMS_Applications::get( $application_id );
+
+		if ( ! $application ) {
+			wp_die( esc_html__( 'Application not found.', 'mms-membership' ), 404 );
+		}
+
+		$user = ! empty( $application['member_user_id'] ) ? get_userdata( (int) $application['member_user_id'] ) : false;
+
+		if ( ! $user ) {
+			self::back_to( $application_id, 'member_password_no_account' );
+		}
+
+		if ( user_can( $user, 'mms_review_application' ) ) {
+			self::back_to( $application_id, 'member_account_admin' );
+		}
+
+		$login = isset( $_POST['user_login'] ) ? MMS_Members::normalize_login( wp_unslash( $_POST['user_login'] ) ) : '';
+		$email = isset( $_POST['account_email'] ) ? sanitize_email( wp_unslash( $_POST['account_email'] ) ) : '';
+
+		if ( '' === $login ) {
+			self::back_to( $application_id, 'member_account_username_invalid' );
+		}
+
+		if ( '' === $email || ! is_email( $email ) ) {
+			self::back_to( $application_id, 'member_account_invalid' );
+		}
+
+		$login_owner = get_user_by( 'login', $login );
+		if ( $login_owner instanceof WP_User && (int) $login_owner->ID !== (int) $user->ID ) {
+			self::back_to( $application_id, 'member_account_username_taken' );
+		}
+
+		$email_owner = email_exists( $email );
+		if ( $email_owner && (int) $email_owner !== (int) $user->ID ) {
+			self::back_to( $application_id, 'member_account_email_taken' );
+		}
+
+		$changed = array();
+
+		if ( $login !== $user->user_login ) {
+			$changed[] = 'username';
+		}
+
+		if ( 0 !== strcasecmp( $email, $user->user_email ) ) {
+			$changed[] = 'email';
+		}
+
+		if ( ! empty( $changed ) ) {
+			$rename = null;
+
+			if ( $login !== $user->user_login ) {
+				// Core drops user_login on updates, so inject it for this one write only.
+				$rename = static function ( $data, $is_update, $user_id ) use ( $login, $user ) {
+					if ( $is_update && (int) $user_id === (int) $user->ID ) {
+						$data['user_login'] = $login;
+					}
+
+					return $data;
+				};
+
+				add_filter( 'wp_pre_insert_user_data', $rename, 10, 3 );
+			}
+
+			$result = wp_update_user(
+				array(
+					'ID'         => $user->ID,
+					'user_email' => $email,
+				)
+			);
+
+			if ( $rename ) {
+				remove_filter( 'wp_pre_insert_user_data', $rename, 10 );
+			}
+
+			if ( is_wp_error( $result ) ) {
+				self::back_to( $application_id, 'member_account_update_failed' );
+			}
+
+			MMS_Applications::log(
+				$application_id,
+				'member_account_updated',
+				sprintf(
+					/* translators: 1: administrator display name, 2: comma separated fields */
+					__( 'Member account updated by %1$s: %2$s.', 'mms-membership' ),
+					wp_get_current_user()->display_name,
+					implode( ', ', $changed )
+				),
+				get_current_user_id()
+			);
+		}
+
+		self::back_to( $application_id, 'member_account_updated' );
+	}
+
+	/**
+	 * Email the new password and username to the member.
+	 *
+	 * @param array   $application Application row.
+	 * @param array   $meta        Company / PIC meta.
+	 * @param WP_User $user        Linked member account.
+	 * @param string  $password    Plain password.
+	 * @return bool Whether the email was accepted for delivery.
+	 */
+	private static function send_password_email( $application, $meta, $user, $password ) {
+		$email = (string) $user->user_email;
+
+		if ( '' === $email || ! is_email( $email ) ) {
+			return false;
+		}
+
+		$site      = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+		$name      = ! empty( $meta['pic_name'] ) ? $meta['pic_name'] : ( isset( $meta['company_name'] ) ? $meta['company_name'] : '' );
+		$reference = '' !== (string) $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
+		$type      = MMS_Membership_Types::get_type( $application['membership_type'] );
+		$login     = MMS_Members::login_url();
+
+		$context = array(
+			'name'            => $name,
+			'company_name'    => isset( $meta['company_name'] ) ? $meta['company_name'] : '',
+			'reference'       => $reference,
+			'membership_type' => $type ? $type['label'] : '',
+			'username'        => $user->user_login,
+			'password'        => $password,
+		);
+
+		$subject = MMS_Emails::subject( 'password', $context );
+		$message = MMS_Emails::body( 'password', $context );
+
+		$row      = '<tr><td style="padding:6px 12px 6px 0;color:#646970;">%1$s</td><td style="padding:6px 0;font-weight:600;">%2$s</td></tr>';
+		$details  = sprintf( $row, esc_html__( 'Username', 'mms-membership' ), esc_html( $user->user_login ) );
+		$details .= sprintf(
+			$row,
+			esc_html__( 'New password', 'mms-membership' ),
+			'<span style="font-family:Consolas,Monaco,monospace;">' . esc_html( $password ) . '</span>'
+		);
+		$details .= sprintf( $row, esc_html__( 'Reference number', 'mms-membership' ), esc_html( $reference ) );
+
+		$body = '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f0f1;font-family:Arial,Helvetica,sans-serif;color:#1d2327;">'
+			. '<div style="max-width:600px;margin:0 auto;padding:24px 12px;">'
+			. '<div style="background:#ffffff;border-radius:6px;padding:32px;">'
+			. '<div style="margin:0 0 16px;font-size:15px;line-height:1.55;">' . $message . '</div>'
+			. '<table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:15px;">' . $details . '</table>'
+			. '<p style="margin:0 0 8px;"><a href="' . esc_url( $login ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Log in to the member portal', 'mms-membership' ) . '</a></p>'
+			. '<p style="margin:0 0 20px;font-size:13px;color:#646970;">' . esc_html__( 'For your security, change this password after signing in. If you did not expect this change, contact MACM immediately.', 'mms-membership' ) . '</p>'
+			. '<p style="margin:24px 0 0;font-size:13px;color:#646970;">' . esc_html( $site ) . '</p>'
+			. '</div></div></body></html>';
+
+		return wp_mail( $email, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
+	}
+
+	/**
 	 * Redirect back to the detail screen with a message code.
 	 *
 	 * @param int    $application_id Application ID.
@@ -295,20 +593,26 @@ class MMS_Admin_Applications {
 	/**
 	 * Read the current list filters from the query string.
 	 *
-	 * @return array{status:string,membership_type:string,search:string,paged:int}
+	 * @return array{status:string,membership_type:string,search:string,order:string,paged:int}
 	 */
 	private static function current_filters() {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
 		$type   = isset( $_GET['membership_type'] ) ? sanitize_key( wp_unslash( $_GET['membership_type'] ) ) : '';
 		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$order  = isset( $_GET['order'] ) ? sanitize_key( wp_unslash( $_GET['order'] ) ) : 'newest';
 		$paged  = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		if ( ! in_array( $order, array( 'newest', 'oldest' ), true ) ) {
+			$order = 'newest';
+		}
 
 		return array(
 			'status'          => $status,
 			'membership_type' => $type,
 			'search'          => $search,
+			'order'           => $order,
 			'paged'           => max( 1, $paged ),
 		);
 	}
@@ -354,8 +658,9 @@ class MMS_Admin_Applications {
 		$count_sql = "SELECT COUNT(*) FROM {$app} a LEFT JOIN {$meta} m ON m.application_id = a.id WHERE {$where_sql}";
 		$total     = (int) $wpdb->get_var( $params ? $wpdb->prepare( $count_sql, $params ) : $count_sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		$per_page = self::PER_PAGE;
-		$offset   = ( $filters['paged'] - 1 ) * $per_page;
+		$per_page  = self::PER_PAGE;
+		$offset    = ( $filters['paged'] - 1 ) * $per_page;
+		$direction = 'oldest' === $filters['order'] ? 'ASC' : 'DESC';
 
 		$rows_sql = "SELECT a.*, m.company_name, m.company_reg_no, m.pic_name, m.pic_email,
 			( SELECT COUNT(*) FROM {$doc} d WHERE d.application_id = a.id ) AS doc_total,
@@ -363,7 +668,7 @@ class MMS_Admin_Applications {
 			FROM {$app} a
 			LEFT JOIN {$meta} m ON m.application_id = a.id
 			WHERE {$where_sql}
-			ORDER BY a.submitted_at DESC, a.id DESC
+			ORDER BY COALESCE(a.submitted_at, a.created_at) {$direction}, a.id {$direction}
 			LIMIT %d OFFSET %d";
 
 		$rows = $wpdb->get_results( $wpdb->prepare( $rows_sql, array_merge( $params, array( $per_page, $offset ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
@@ -396,8 +701,8 @@ class MMS_Admin_Applications {
 			<div class="mms-hero mms-hero-compact">
 				<div>
 					<p class="mms-hero-eyebrow"><?php esc_html_e( 'MACM Membership', 'mms-membership' ); ?></p>
-					<h1><?php esc_html_e( 'Membership applications', 'mms-membership' ); ?></h1>
-					<p class="mms-hero-sub"><?php esc_html_e( 'Review submissions, follow document checks and decide on membership applications.', 'mms-membership' ); ?></p>
+					<h1><?php esc_html_e( 'Company List', 'mms-membership' ); ?></h1>
+					<p class="mms-hero-sub"><?php esc_html_e( 'Every company registration, its documents and review status.', 'mms-membership' ); ?></p>
 				</div>
 				<div class="mms-hero-actions">
 					<a class="mms-btn mms-btn-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MMS_Admin_Company::PAGE ) ); ?>"><span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><?php esc_html_e( 'Add company', 'mms-membership' ); ?></a>
@@ -458,9 +763,15 @@ class MMS_Admin_Applications {
 				<label for="mms-filter-search" class="screen-reader-text"><?php esc_html_e( 'Search applications', 'mms-membership' ); ?></label>
 				<input type="search" id="mms-filter-search" name="s" value="<?php echo esc_attr( $filters['search'] ); ?>" placeholder="<?php esc_attr_e( 'Reference, company, SSM no. or email', 'mms-membership' ); ?>" />
 
+				<label for="mms-filter-order" class="screen-reader-text"><?php esc_html_e( 'Sort by date', 'mms-membership' ); ?></label>
+				<select name="order" id="mms-filter-order">
+					<option value="newest" <?php selected( $filters['order'], 'newest' ); ?>><?php esc_html_e( 'Newest first', 'mms-membership' ); ?></option>
+					<option value="oldest" <?php selected( $filters['order'], 'oldest' ); ?>><?php esc_html_e( 'Oldest first', 'mms-membership' ); ?></option>
+				</select>
+
 				<?php submit_button( __( 'Filter', 'mms-membership' ), 'secondary', '', false ); ?>
 
-				<?php if ( '' !== $filters['status'] || '' !== $filters['membership_type'] || '' !== $filters['search'] ) : ?>
+				<?php if ( '' !== $filters['status'] || '' !== $filters['membership_type'] || '' !== $filters['search'] || 'newest' !== $filters['order'] ) : ?>
 					<a class="mms-filters-reset" href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::PAGE ) ); ?>"><?php esc_html_e( 'Reset', 'mms-membership' ); ?></a>
 				<?php endif; ?>
 			</form>
@@ -468,8 +779,8 @@ class MMS_Admin_Applications {
 				<p class="mms-toolbar-count">
 					<?php
 					printf(
-						/* translators: %d: number of applications */
-						esc_html( _n( '%d application found.', '%d applications found.', $result['total'], 'mms-membership' ) ),
+						/* translators: %d: number of companies */
+						esc_html( _n( '%d company found.', '%d companies found.', $result['total'], 'mms-membership' ) ),
 						(int) $result['total']
 					);
 					?>
@@ -525,10 +836,14 @@ class MMS_Admin_Applications {
 						$doc_done   = (int) $row->doc_reviewed;
 						?>
 						<tr>
-							<td class="mms-col-check"><input type="checkbox" class="mms-check-row" name="application_ids[]" value="<?php echo (int) $row->id; ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: application reference */ __( 'Select application %s', 'mms-membership' ), '' !== $row->reference ? $row->reference : '#' . (int) $row->id ) ); ?>" /></td>
-							<td><strong><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( '' !== $row->reference ? $row->reference : '#' . (int) $row->id ); ?></a></strong></td>
+							<td class="mms-col-check"><input type="checkbox" class="mms-check-row" name="application_ids[]" value="<?php echo (int) $row->id; ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: application reference */ __( 'Select application %s', 'mms-membership' ), '' !== (string) $row->reference ? $row->reference : '#' . (int) $row->id ) ); ?>" /></td>
+							<td><strong><a href="<?php echo esc_url( $detail_url ); ?>"><?php echo esc_html( '' !== (string) $row->reference ? $row->reference : '#' . (int) $row->id ); ?></a></strong></td>
 							<td>
-								<?php echo esc_html( $row->company_name ? $row->company_name : '—' ); ?>
+								<?php if ( $row->company_name ) : ?>
+									<a href="<?php echo esc_url( $detail_url ); ?>"><strong><?php echo esc_html( $row->company_name ); ?></strong></a>
+								<?php else : ?>
+									—
+								<?php endif; ?>
 								<?php if ( ! empty( $row->company_reg_no ) ) : ?>
 									<br /><span class="mms-muted"><?php echo esc_html( $row->company_reg_no ); ?></span>
 								<?php endif; ?>
@@ -572,6 +887,7 @@ class MMS_Admin_Applications {
 										'status'          => $filters['status'],
 										'membership_type' => $filters['membership_type'],
 										's'               => $filters['search'],
+										'order'           => $filters['order'],
 										'paged'           => '%#%',
 									),
 									admin_url( 'admin.php' )
@@ -608,7 +924,7 @@ class MMS_Admin_Applications {
 			?>
 			<div class="wrap mms-wrap mms-admin-ui">
 				<h1><?php esc_html_e( 'Application not found', 'mms-membership' ); ?></h1>
-				<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::PAGE ) ); ?>"><?php esc_html_e( '&larr; Back to applications', 'mms-membership' ); ?></a></p>
+				<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::PAGE ) ); ?>"><?php esc_html_e( '&larr; Back to Company List', 'mms-membership' ); ?></a></p>
 			</div>
 			<?php
 			return;
@@ -635,6 +951,14 @@ class MMS_Admin_Applications {
 		$pay_kind = MMS_Payments::kind_for( $application );
 		$payments = MMS_Payments::for_application( $id );
 
+		$member_user     = ! empty( $application['member_user_id'] )
+			? get_userdata( (int) $application['member_user_id'] )
+			: false;
+		$member_is_admin = $member_user && user_can( $member_user, 'mms_review_application' );
+		$member_password = MMS_Members::generate_password();
+		$member_pic_email = isset( $meta['pic_email'] ) ? sanitize_email( $meta['pic_email'] ) : '';
+		$member_login     = MMS_Members::suggest_login( $member_pic_email );
+
 		if ( MMS_Status::APPROVED_UNPAID === $application['status'] && ! MMS_Payments::pending_invoice( $id, MMS_Payments::KIND_INITIAL ) ) {
 			MMS_Payments::ensure_invoice( $application, $meta, $type, MMS_Payments::KIND_INITIAL );
 			$payments = MMS_Payments::for_application( $id );
@@ -656,7 +980,7 @@ class MMS_Admin_Applications {
 						printf(
 							/* translators: %s: reference number */
 							esc_html__( 'Application %s', 'mms-membership' ),
-							esc_html( '' !== $application['reference'] ? $application['reference'] : '#' . (int) $application['id'] )
+							esc_html( '' !== (string) $application['reference'] ? $application['reference'] : '#' . (int) $application['id'] )
 						);
 						?>
 					</h1>
@@ -672,7 +996,7 @@ class MMS_Admin_Applications {
 					<?php if ( '' !== $certificate_url ) : ?>
 						<a class="mms-btn mms-btn-primary" href="<?php echo esc_url( $certificate_url ); ?>"><span class="dashicons dashicons-media-document" aria-hidden="true"></span><?php esc_html_e( 'Download certificate', 'mms-membership' ); ?></a>
 					<?php endif; ?>
-					<a class="mms-btn mms-btn-ghost" href="<?php echo esc_url( $back_url ); ?>"><span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span><?php esc_html_e( 'All applications', 'mms-membership' ); ?></a>
+					<a class="mms-btn mms-btn-ghost" href="<?php echo esc_url( $back_url ); ?>"><span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span><?php esc_html_e( 'All companies', 'mms-membership' ); ?></a>
 				</div>
 			</div>
 
@@ -698,6 +1022,38 @@ class MMS_Admin_Applications {
 				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The invoice could not be found or created.', 'mms-membership' ); ?></p></div>
 			<?php elseif ( 'payment_invalid' === $message ) : ?>
 				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Check the payment amount and date, then try again.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_password_saved' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'The password was changed and the new login details were emailed to the member.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_password_email_failed' === $message ) : ?>
+				<div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'The password was changed, but the email could not be sent. Share the new password with the member through a secure channel.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_password_short' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The new password must be at least 8 characters long.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_password_no_account' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'No member account is linked to this company, so the password could not be changed.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_password_admin' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The linked account has administrator access. Change its password from the Users screen instead.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_created' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Member account created and the login details were emailed to the member.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_email_failed' === $message ) : ?>
+				<div class="notice notice-warning is-dismissible"><p><?php esc_html_e( 'The member account was created, but the login email could not be sent. Share the username and password with the member through a secure channel.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_failed' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The member account could not be created. The Person In Charge email may already belong to another user, or the username is already taken.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_username_taken' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'That username is already taken. Choose another username and submit again.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_invalid' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Enter a valid account email address to create the member account.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_exists' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'This company already has a linked member account. Use the reset password form below it.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_updated' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Member account details saved.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_email_taken' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'That email address is already used by another account. Choose a different email.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_username_invalid' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Enter a valid username using letters, numbers, spaces, underscores and hyphens only.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_update_failed' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The member account details could not be saved. Check the username and email address, then try again.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_admin' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The linked account has administrator access. Edit it from the Users screen instead.', 'mms-membership' ); ?></p></div>
 			<?php endif; ?>
 
 			<div class="mms-detail-summary">
@@ -799,6 +1155,112 @@ class MMS_Admin_Applications {
 						</tbody>
 					</table>
 				</div>
+			</div>
+
+			<h2 class="mms-section-title"><?php esc_html_e( 'Member account', 'mms-membership' ); ?></h2>
+
+			<div class="mms-card mms-member-account">
+				<?php if ( ! $member_user ) : ?>
+					<p class="mms-muted"><?php esc_html_e( 'No member account is linked to this company yet. Create one below — the login details will be emailed immediately.', 'mms-membership' ); ?></p>
+
+					<form class="mms-member-password-form mms-member-create-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="mms_admin_member_create" />
+						<input type="hidden" name="application_id" value="<?php echo (int) $application['id']; ?>" />
+						<?php wp_nonce_field( self::NONCE_ACCOUNT ); ?>
+
+						<h3><?php esc_html_e( 'Create member account', 'mms-membership' ); ?></h3>
+						<p class="mms-muted"><?php esc_html_e( 'Type the account email manually if the application has no Person In Charge email.', 'mms-membership' ); ?></p>
+
+						<div class="mms-form-field">
+							<label for="mms-member-email"><?php esc_html_e( 'Account email', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+							<input type="email" id="mms-member-email" name="account_email" value="<?php echo esc_attr( $member_pic_email ); ?>" autocomplete="email" maxlength="100" required />
+							<span class="mms-form-hint"><?php esc_html_e( 'The login details will be sent to this address.', 'mms-membership' ); ?></span>
+						</div>
+
+						<div class="mms-form-field">
+							<label for="mms-member-username"><?php esc_html_e( 'Username', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+							<input type="text" id="mms-member-username" name="user_login" value="<?php echo esc_attr( $member_login ); ?>" autocomplete="off" spellcheck="false" maxlength="60" required />
+							<span class="mms-username-status" id="mms-member-username-status" aria-live="polite"><?php esc_html_e( 'Checking availability…', 'mms-membership' ); ?></span>
+						</div>
+
+						<div class="mms-form-field">
+							<label for="mms-member-create-password"><?php esc_html_e( 'Password', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+							<div class="mms-password-row">
+								<input type="text" id="mms-member-create-password" name="new_password" value="<?php echo esc_attr( $member_password ); ?>" autocomplete="new-password" spellcheck="false" minlength="8" maxlength="200" required />
+								<button type="button" class="mms-btn mms-btn-outline mms-generate-member-password"><?php esc_html_e( 'Generate', 'mms-membership' ); ?></button>
+							</div>
+							<span class="mms-form-hint"><?php esc_html_e( 'At least 8 characters. The member can change this password after signing in.', 'mms-membership' ); ?></span>
+						</div>
+
+						<div class="mms-form-actions">
+							<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Create account & email login details', 'mms-membership' ); ?></button>
+						</div>
+					</form>
+				<?php else : ?>
+					<?php if ( $member_is_admin ) : ?>
+						<table class="mms-kv">
+							<tbody>
+								<tr>
+									<th><?php esc_html_e( 'Username', 'mms-membership' ); ?></th>
+									<td><strong><?php echo esc_html( $member_user->user_login ); ?></strong></td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Email', 'mms-membership' ); ?></th>
+									<td><a href="mailto:<?php echo esc_attr( $member_user->user_email ); ?>"><?php echo esc_html( $member_user->user_email ); ?></a></td>
+								</tr>
+							</tbody>
+						</table>
+						<p class="mms-muted"><?php esc_html_e( 'This account has administrator access. Edit it from the Users screen instead.', 'mms-membership' ); ?></p>
+					<?php else : ?>
+						<form class="mms-member-password-form mms-member-edit-form" data-mms-user-id="<?php echo (int) $member_user->ID; ?>" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="mms_admin_member_update" />
+							<input type="hidden" name="application_id" value="<?php echo (int) $application['id']; ?>" />
+							<?php wp_nonce_field( self::NONCE_UPDATE ); ?>
+
+							<h3><?php esc_html_e( 'Account details', 'mms-membership' ); ?></h3>
+							<p class="mms-muted"><?php esc_html_e( 'Update the login username or email address. The password is not changed here.', 'mms-membership' ); ?></p>
+
+							<div class="mms-form-field">
+								<label for="mms-member-edit-username"><?php esc_html_e( 'Username', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+								<input type="text" id="mms-member-edit-username" name="user_login" value="<?php echo esc_attr( $member_user->user_login ); ?>" autocomplete="off" spellcheck="false" maxlength="60" required />
+								<span class="mms-username-status" id="mms-member-edit-username-status" aria-live="polite"><?php esc_html_e( 'Checking availability…', 'mms-membership' ); ?></span>
+								<span class="mms-form-hint"><?php esc_html_e( 'The member signs in with this username. Tell them if you change it.', 'mms-membership' ); ?></span>
+							</div>
+
+							<div class="mms-form-field">
+								<label for="mms-member-edit-email"><?php esc_html_e( 'Email', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+								<input type="email" id="mms-member-edit-email" name="account_email" value="<?php echo esc_attr( $member_user->user_email ); ?>" autocomplete="email" maxlength="100" required />
+								<span class="mms-form-hint"><?php esc_html_e( 'Used for login emails and password resets.', 'mms-membership' ); ?></span>
+							</div>
+
+							<div class="mms-form-actions">
+								<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Save account details', 'mms-membership' ); ?></button>
+							</div>
+						</form>
+
+						<form class="mms-member-password-form mms-member-reset-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="mms_admin_member_password" />
+							<input type="hidden" name="application_id" value="<?php echo (int) $application['id']; ?>" />
+							<?php wp_nonce_field( self::NONCE_PASSWORD ); ?>
+
+							<h3><?php esc_html_e( 'Reset password', 'mms-membership' ); ?></h3>
+							<p class="mms-muted"><?php esc_html_e( 'Keep the generated password, or type a new one. The password is saved immediately and emailed to the member together with their username.', 'mms-membership' ); ?></p>
+
+							<div class="mms-form-field">
+								<label for="mms-member-password"><?php esc_html_e( 'New password', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+								<div class="mms-password-row">
+									<input type="text" id="mms-member-password" name="new_password" value="<?php echo esc_attr( $member_password ); ?>" autocomplete="new-password" spellcheck="false" minlength="8" maxlength="200" required />
+									<button type="button" class="mms-btn mms-btn-outline mms-generate-member-password"><?php esc_html_e( 'Generate', 'mms-membership' ); ?></button>
+								</div>
+								<span class="mms-form-hint"><?php esc_html_e( 'At least 8 characters. The member can change this password after signing in.', 'mms-membership' ); ?></span>
+							</div>
+
+							<div class="mms-form-actions">
+								<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Save password & email member', 'mms-membership' ); ?></button>
+							</div>
+						</form>
+					<?php endif; ?>
+				<?php endif; ?>
 			</div>
 
 			<h2 class="mms-section-title"><?php esc_html_e( 'Supporting documents', 'mms-membership' ); ?></h2>
@@ -1365,7 +1827,7 @@ class MMS_Admin_Applications {
 		}
 
 		$site      = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
-		$reference = '' !== $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
+		$reference = '' !== (string) $application['reference'] ? $application['reference'] : '#' . (int) $application['id'];
 		$name      = isset( $meta['pic_name'] ) ? $meta['pic_name'] : '';
 		$type      = MMS_Membership_Types::get_type( $application['membership_type'] );
 		$type_name = $type ? $type['label'] : $application['membership_type'];

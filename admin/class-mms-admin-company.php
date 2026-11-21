@@ -43,6 +43,7 @@ class MMS_Admin_Company {
 
 		$raw   = isset( $_POST['username'] ) ? sanitize_text_field( wp_unslash( $_POST['username'] ) ) : '';
 		$login = MMS_Members::normalize_login( $raw );
+		$keep  = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
 
 		if ( '' === $login ) {
 			wp_send_json_success(
@@ -54,13 +55,27 @@ class MMS_Admin_Company {
 			);
 		}
 
-		if ( username_exists( $login ) ) {
+		$existing = get_user_by( 'login', $login );
+
+		if ( $existing instanceof WP_User && (int) $existing->ID !== $keep ) {
 			wp_send_json_success(
 				array(
 					'available' => false,
 					'username'  => $login,
 					/* translators: %s: username */
 					'message'   => sprintf( __( '“%s” is already taken. Choose another username.', 'mms-membership' ), $login ),
+				)
+			);
+		}
+
+		if ( $existing instanceof WP_User ) {
+			wp_send_json_success(
+				array(
+					'available' => true,
+					'username'  => $login,
+					'current'   => true,
+					/* translators: %s: username */
+					'message'   => sprintf( __( '“%s” is the current username for this account.', 'mms-membership' ), $login ),
 				)
 			);
 		}
@@ -73,23 +88,6 @@ class MMS_Admin_Company {
 				'message'   => sprintf( __( '“%s” is available.', 'mms-membership' ), $login ),
 			)
 		);
-	}
-
-	/**
-	 * Random alphanumeric password without ambiguous characters.
-	 *
-	 * @return string
-	 */
-	private static function generate_password() {
-		$chars  = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-		$length = strlen( $chars );
-		$result = '';
-
-		for ( $i = 0; $i < 16; $i++ ) {
-			$result .= $chars[ random_int( 0, $length - 1 ) ];
-		}
-
-		return $result;
 	}
 
 	/**
@@ -141,7 +139,7 @@ class MMS_Admin_Company {
 		if ( '' === $account_username && '' !== $value( 'pic_email' ) ) {
 			$account_username = MMS_Members::suggest_login( $value( 'pic_email' ) );
 		}
-		$account_password = self::generate_password();
+		$account_password = MMS_Members::generate_password();
 		?>
 		<div class="wrap mms-wrap mms-admin-ui">
 			<div class="mms-hero">
@@ -158,7 +156,7 @@ class MMS_Admin_Company {
 						<?php esc_html_e( 'Dashboard', 'mms-membership' ); ?>
 					</a>
 					<a class="mms-btn mms-btn-ghost" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MMS_Admin_Applications::PAGE ) ); ?>">
-						<?php esc_html_e( 'Applications', 'mms-membership' ); ?>
+						<?php esc_html_e( 'Company List', 'mms-membership' ); ?>
 					</a>
 				</div>
 			</div>
@@ -614,9 +612,9 @@ class MMS_Admin_Company {
 	 * @param int   $app_id      Application ID.
 	 * @param array $meta        Company / PIC meta.
 	 * @param array $credentials Optional `user_login` and `user_pass`.
-	 * @return void
+	 * @return array<string,mixed>|WP_Error Member result with a `sent` flag, or an error.
 	 */
-	private static function create_account( $app_id, $meta, $credentials = array() ) {
+	public static function create_account( $app_id, $meta, $credentials = array() ) {
 		$application = MMS_Applications::get( $app_id );
 		$member      = MMS_Members::create_from_application( $application, $meta, $credentials );
 
@@ -631,7 +629,7 @@ class MMS_Admin_Company {
 				),
 				get_current_user_id()
 			);
-			return;
+			return $member;
 		}
 
 		MMS_Applications::log(
@@ -648,8 +646,12 @@ class MMS_Admin_Company {
 		);
 
 		if ( $member['created'] && ! empty( $credentials['user_pass'] ) ) {
-			self::send_credentials_email( $app_id, $application, $meta, $member, $credentials['user_pass'] );
-			return;
+			$sent = self::send_credentials_email( $app_id, $application, $meta, $member, $credentials['user_pass'] );
+
+			return array(
+				'member' => $member,
+				'sent'   => $sent,
+			);
 		}
 
 		$token = MMS_Members::issue_set_password_token( $member['user_id'] );
@@ -692,6 +694,11 @@ class MMS_Admin_Company {
 				? sprintf( __( 'Set-password email sent to %s.', 'mms-membership' ), $meta['pic_email'] )
 				: __( 'Set-password email could not be sent — check the site mail configuration.', 'mms-membership' )
 		);
+
+		return array(
+			'member' => $member,
+			'sent'   => (bool) $sent,
+		);
 	}
 
 	/**
@@ -702,13 +709,13 @@ class MMS_Admin_Company {
 	 * @param array $meta        Company / PIC meta.
 	 * @param array $member      Result from MMS_Members::create_from_application().
 	 * @param string $password   Plain temporary password.
-	 * @return void
+	 * @return bool Whether the email was accepted for delivery.
 	 */
 	private static function send_credentials_email( $app_id, $application, $meta, $member, $password ) {
 		$email = isset( $meta['pic_email'] ) ? $meta['pic_email'] : '';
 
 		if ( '' === $email || ! is_email( $email ) ) {
-			return;
+			return false;
 		}
 
 		$site      = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
@@ -767,5 +774,7 @@ class MMS_Admin_Company {
 				: __( 'Account login details could not be sent — check the site mail configuration.', 'mms-membership' ),
 			get_current_user_id()
 		);
+
+		return (bool) $sent;
 	}
 }

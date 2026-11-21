@@ -61,9 +61,12 @@ class MMS_Portal {
 	 */
 	public function render() {
 		wp_enqueue_style( 'mms-public', MMS_MEMBERSHIP_URL . 'assets/css/mms-public.css', array(), MMS_MEMBERSHIP_VERSION );
+		wp_enqueue_style( 'mms-login', MMS_MEMBERSHIP_URL . 'assets/css/mms-login.css', array( 'mms-public' ), MMS_MEMBERSHIP_VERSION );
+		wp_enqueue_style( 'mms-portal', MMS_MEMBERSHIP_URL . 'assets/css/mms-portal.css', array( 'mms-login' ), MMS_MEMBERSHIP_VERSION );
 
-		$mms_logged_in  = is_user_logged_in();
-		$mms_login_url  = MMS_Members::login_url();
+		$mms_logged_in        = is_user_logged_in();
+		$mms_login_url        = MMS_Members::login_url();
+		$mms_registration_url = MMS_Members::registration_url();
 		$mms_portal_url = MMS_Members::portal_url();
 		$mms_msg        = isset( $_GET['mms_msg'] ) ? sanitize_key( wp_unslash( $_GET['mms_msg'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$mms_pay_state  = isset( $_GET['mms_payment'] ) ? sanitize_key( wp_unslash( $_GET['mms_payment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -87,7 +90,7 @@ class MMS_Portal {
 		$mms_catalog  = MMS_Membership_Types::get_document_types();
 		$mms_doc_state = MMS_Status::document_statuses();
 		$mms_errors   = ( $mms_logged_in && $mms_app ) ? $this->pull_errors( $user->ID ) : array();
-		$mms_ref      = $mms_app ? ( '' !== $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ) : '';
+		$mms_ref      = $mms_app ? ( '' !== (string) $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ) : '';
 		$mms_fee      = $mms_type ? self::format_fee( $mms_type ) : '—';
 		$mms_status   = $mms_app ? $mms_app['status'] : '';
 		$mms_user     = $mms_logged_in ? wp_get_current_user() : null;

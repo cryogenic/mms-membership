@@ -26,7 +26,7 @@ $mms_app   = isset( $mms_app ) ? $mms_app : null;
 		<?php if ( $mms_app ) : ?>
 			<p class="mms-reference">
 				<span><?php esc_html_e( 'Reference number', 'mms-membership' ); ?></span>
-				<strong><?php echo esc_html( '' !== $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ); ?></strong>
+				<strong><?php echo esc_html( '' !== (string) $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ); ?></strong>
 			</p>
 			<p><?php esc_html_e( 'We will contact you again once the review is complete.', 'mms-membership' ); ?></p>
 		<?php endif; ?>
@@ -44,7 +44,7 @@ $mms_app   = isset( $mms_app ) ? $mms_app : null;
 		<?php if ( $mms_app ) : ?>
 			<p class="mms-reference">
 				<span><?php esc_html_e( 'Reference number', 'mms-membership' ); ?></span>
-				<strong><?php echo esc_html( '' !== $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ); ?></strong>
+				<strong><?php echo esc_html( '' !== (string) $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'] ); ?></strong>
 			</p>
 		<?php endif; ?>
 	<?php endif; ?>

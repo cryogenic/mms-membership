@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $mms_company = isset( $mms_meta['company_name'] ) ? $mms_meta['company_name'] : '';
-$mms_ref     = '' !== $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'];
+$mms_ref     = '' !== (string) $mms_app['reference'] ? $mms_app['reference'] : '#' . (int) $mms_app['id'];
 ?>
 <div class="mms-registration mms-resume">
 

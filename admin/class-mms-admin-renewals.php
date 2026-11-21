@@ -117,7 +117,7 @@ class MMS_Admin_Renewals {
 					<p class="mms-hero-sub"><?php esc_html_e( 'Renewal payments, reminder delivery and expired memberships. The expiry check runs daily at 02:00 site time through WP-Cron.', 'mms-membership' ); ?></p>
 				</div>
 				<div class="mms-hero-actions">
-					<a class="mms-btn mms-btn-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MMS_Admin_Applications::PAGE ) ); ?>"><span class="dashicons dashicons-list-view" aria-hidden="true"></span><?php esc_html_e( 'Applications', 'mms-membership' ); ?></a>
+					<a class="mms-btn mms-btn-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . MMS_Admin_Applications::PAGE ) ); ?>"><span class="dashicons dashicons-list-view" aria-hidden="true"></span><?php esc_html_e( 'Company List', 'mms-membership' ); ?></a>
 					<a class="mms-btn mms-btn-ghost" href="<?php echo esc_url( admin_url( 'admin.php?page=mms-membership' ) ); ?>"><span class="dashicons dashicons-dashboard" aria-hidden="true"></span><?php esc_html_e( 'Dashboard', 'mms-membership' ); ?></a>
 				</div>
 			</div>

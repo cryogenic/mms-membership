@@ -1,6 +1,6 @@
 <?php
 /**
- * Member accounts: WordPress user creation and one-time set-password links.
+ * Member accounts: WordPress user creation, admin password resets and one-time set-password links.
  *
  * @package MMS_Membership
  */
@@ -236,6 +236,39 @@ class MMS_Members {
 	}
 
 	/**
+	 * Random alphanumeric password without ambiguous characters.
+	 *
+	 * @return string
+	 */
+	public static function generate_password() {
+		$chars  = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+		$length = strlen( $chars );
+		$result = '';
+
+		for ( $i = 0; $i < 16; $i++ ) {
+			$result .= $chars[ random_int( 0, $length - 1 ) ];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Replace a member password from the admin, ending any existing sessions.
+	 *
+	 * @param WP_User $user     User.
+	 * @param string  $password New password (already validated).
+	 * @return void
+	 */
+	public static function reset_password( $user, $password ) {
+		wp_set_password( $password, $user->ID );
+		self::clear_token( $user->ID );
+
+		if ( class_exists( 'WP_Session_Tokens' ) ) {
+			WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
+		}
+	}
+
+	/**
 	 * Set a new password and burn the token.
 	 *
 	 * @param WP_User $user User.
@@ -285,6 +318,17 @@ class MMS_Members {
 		}
 
 		return wp_login_url();
+	}
+
+	/**
+	 * Public registration page URL (falls back to the site home).
+	 *
+	 * @return string
+	 */
+	public static function registration_url() {
+		$page = get_page_by_path( 'membership-registration' );
+
+		return ( $page && 'publish' === $page->post_status ) ? get_permalink( $page ) : home_url( '/' );
 	}
 
 	/**
