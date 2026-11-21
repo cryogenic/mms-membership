@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0
+- Add username and temporary password fields when an admin creates a company manually.
+- Check username availability as the admin types, and validate it again on save.
+- Generate a random temporary password and email the login details to the Person In Charge.
+- Add a customisable "Member account — login details" email template.
+
 ## 0.13.2
 - Customisable approval and payment email templates (subject and WYSIWYG body) in Settings → Email notifications, with placeholders and safe HTML sanitising.
 - Settings screen sections are grouped into six tabs with one sticky Save action, a remembered last tab and no-JavaScript fallback.

@@ -30,22 +30,37 @@ class MMS_Members {
 	 *
 	 * @param array $application Application row.
 	 * @param array $meta Company / PIC meta row.
-	 * @return array<string,mixed>|WP_Error Array with user_id and created flag.
+	 * @param array $credentials Optional `user_login` and `user_pass` for manual registrations.
+	 * @return array<string,mixed>|WP_Error Array with user_id, created flag and login.
 	 */
-	public static function create_from_application( $application, $meta ) {
+	public static function create_from_application( $application, $meta, $credentials = array() ) {
 		$email = isset( $meta['pic_email'] ) ? sanitize_email( $meta['pic_email'] ) : '';
 
 		if ( '' === $email || ! is_email( $email ) ) {
 			return new WP_Error( 'mms_invalid_email', __( 'The Person In Charge email address is not valid.', 'mms-membership' ) );
 		}
 
+		$login    = isset( $credentials['user_login'] ) ? self::normalize_login( $credentials['user_login'] ) : '';
+		$password = isset( $credentials['user_pass'] ) ? (string) $credentials['user_pass'] : '';
+
 		$created  = false;
 		$existing = get_user_by( 'email', $email );
 
 		if ( $existing instanceof WP_User ) {
+			if ( '' !== $login || '' !== $password ) {
+				return new WP_Error(
+					'mms_account_exists',
+					sprintf(
+						/* translators: %s: username */
+						__( 'A member account already exists for this email address (username: %s).', 'mms-membership' ),
+						$existing->user_login
+					)
+				);
+			}
+
 			$user_id = (int) $existing->ID;
 		} else {
-			$user_id = self::insert_user( $email, $meta );
+			$user_id = self::insert_user( $email, $meta, $login, $password );
 			if ( is_wp_error( $user_id ) ) {
 				return $user_id;
 			}
@@ -58,32 +73,37 @@ class MMS_Members {
 			MMS_Applications::link_member( (int) $application['id'], $user_id );
 		}
 
+		$user = get_userdata( $user_id );
+
 		return array(
 			'user_id' => $user_id,
 			'created' => $created,
+			'login'   => $user instanceof WP_User ? $user->user_login : $login,
 		);
 	}
 
 	/**
 	 * Insert a new WordPress user with the member role.
 	 *
-	 * @param string $email Account email.
-	 * @param array  $meta Applicant meta.
+	 * @param string $email    Account email.
+	 * @param array  $meta     Applicant meta.
+	 * @param string $login    Requested username (blank to derive one).
+	 * @param string $password Requested password (blank to generate one).
 	 * @return int|WP_Error User ID.
 	 */
-	private static function insert_user( $email, $meta ) {
-		$local = strstr( $email, '@', true );
-		$base  = sanitize_user( (string) $local, true );
+	private static function insert_user( $email, $meta, $login = '', $password = '' ) {
+		$login = '' !== $login ? self::normalize_login( $login ) : self::suggest_login( $email );
 
-		if ( '' === $base ) {
-			$base = 'member';
+		if ( '' === $login ) {
+			return new WP_Error( 'mms_invalid_username', __( 'The username is not valid.', 'mms-membership' ) );
 		}
 
-		$login = $base;
-		$i     = 1;
-		while ( username_exists( $login ) ) {
-			++$i;
-			$login = $base . $i;
+		if ( username_exists( $login ) ) {
+			return new WP_Error( 'mms_username_taken', __( 'That username is already taken.', 'mms-membership' ) );
+		}
+
+		if ( '' === $password ) {
+			$password = wp_generate_password( 32, true, true );
 		}
 
 		$name = '';
@@ -97,13 +117,51 @@ class MMS_Members {
 			array(
 				'user_login'   => $login,
 				'user_email'   => $email,
-				'user_pass'    => wp_generate_password( 32, true, true ),
+				'user_pass'    => $password,
 				'display_name' => '' !== $name ? $name : $login,
 				'role'         => self::ROLE,
 			)
 		);
 
 		return is_wp_error( $user_id ) ? $user_id : (int) $user_id;
+	}
+
+	/**
+	 * Normalise a user-entered username (WordPress rules, max 60 characters).
+	 *
+	 * @param string $login Raw username.
+	 * @return string
+	 */
+	public static function normalize_login( $login ) {
+		$login = sanitize_user( trim( (string) $login ), true );
+
+		return substr( $login, 0, 60 );
+	}
+
+	/**
+	 * Suggest an available username from an email address.
+	 *
+	 * @param string $email Account email.
+	 * @return string
+	 */
+	public static function suggest_login( $email ) {
+		$local = strstr( (string) $email, '@', true );
+		$base  = self::normalize_login( $local );
+
+		if ( '' === $base ) {
+			$base = 'member';
+		}
+
+		$login = $base;
+		$i     = 1;
+
+		while ( username_exists( $login ) ) {
+			++$i;
+			$suffix = (string) $i;
+			$login  = substr( $base, 0, 60 - strlen( $suffix ) ) . $suffix;
+		}
+
+		return $login;
 	}
 
 	/**

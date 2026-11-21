@@ -163,5 +163,156 @@
 			$settingsForm.addClass( 'mms-tabs-ready' );
 			activateTab( initialKey, false );
 		}
+
+		var $companyForm = $( '.mms-company-form' );
+
+		if ( $companyForm.length && window.mmsAdmin ) {
+			var $accountToggle = $( '#mms-create-account' );
+			var $accountFields = $companyForm.find( '.mms-account-fields' );
+			var $username = $( '#mms-account-username' );
+			var $usernameStatus = $( '#mms-username-status' );
+			var $password = $( '#mms-account-password' );
+			var $email = $( '#mms-pic-email' );
+			var usernameTimer = null;
+			var usernameTouched = '' !== $.trim( $username.val() );
+			var lastQuery = '';
+
+			var defaultUsernameHint = function () {
+				return $username.attr( 'data-mms-default-hint' ) || '';
+			};
+
+			var setUsernameStatus = function ( state, text ) {
+				$usernameStatus.removeClass( 'is-ok is-bad is-checking' ).addClass( state ? 'is-' + state : '' ).text( text );
+			};
+
+			var checkUsername = function () {
+				var value = $.trim( $username.val() );
+
+				if ( ! value ) {
+					setUsernameStatus( '', defaultUsernameHint() );
+					return;
+				}
+
+				if ( value === lastQuery ) {
+					return;
+				}
+
+				lastQuery = value;
+				setUsernameStatus( 'checking', window.mmsAdmin.checkingText );
+
+				$.post( window.mmsAdmin.ajaxUrl, {
+					action: 'mms_check_username',
+					nonce: window.mmsAdmin.usernameNonce,
+					username: value
+				} ).done( function ( response ) {
+					if ( $.trim( $username.val() ) !== value ) {
+						return;
+					}
+
+					if ( ! response || ! response.success || ! response.data ) {
+						setUsernameStatus( 'bad', window.mmsAdmin.errorText );
+						return;
+					}
+
+					$username
+						.attr( 'data-mms-available', response.data.available ? '1' : '0' )
+						.attr( 'data-mms-checked', response.data.username );
+
+					setUsernameStatus( response.data.available ? 'ok' : 'bad', response.data.message );
+				} ).fail( function () {
+					setUsernameStatus( 'bad', window.mmsAdmin.errorText );
+				} );
+			};
+
+			var suggestUsername = function () {
+				var value = $.trim( $email.val() ).toLowerCase();
+				var at = value.indexOf( '@' );
+
+				if ( at < 1 ) {
+					return '';
+				}
+
+				return value
+					.slice( 0, at )
+					.replace( /[^a-z0-9._-]/g, '' )
+					.replace( /^[._-]+|[._-]+$/g, '' )
+					.substring( 0, 60 );
+			};
+
+			var toggleAccountFields = function () {
+				var enabled = $accountToggle.is( ':checked' );
+
+				$accountFields.toggleClass( 'is-disabled', ! enabled );
+				$accountFields.find( 'input' ).prop( 'disabled', ! enabled );
+			};
+
+			$username.on( 'input', function () {
+				usernameTouched = true;
+				lastQuery = '';
+
+				$username.removeAttr( 'data-mms-available data-mms-checked' );
+				window.clearTimeout( usernameTimer );
+
+				if ( ! $.trim( $username.val() ) ) {
+					setUsernameStatus( '', defaultUsernameHint() );
+					return;
+				}
+
+				setUsernameStatus( 'checking', window.mmsAdmin.checkingText );
+				usernameTimer = window.setTimeout( checkUsername, 400 );
+			} );
+
+			$email.on( 'input', function () {
+				if ( usernameTouched || $.trim( $username.val() ) ) {
+					return;
+				}
+
+				var suggestion = suggestUsername();
+
+				if ( suggestion ) {
+					$username.val( suggestion );
+					lastQuery = '';
+					checkUsername();
+				}
+			} );
+
+			$( '#mms-generate-password' ).on( 'click', function () {
+				var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+				var result = '';
+
+				if ( window.crypto && window.crypto.getRandomValues ) {
+					var values = new Uint32Array( 16 );
+					window.crypto.getRandomValues( values );
+
+					$.each( values, function ( i, value ) {
+						result += chars.charAt( value % chars.length );
+					} );
+				} else {
+					for ( var i = 0; i < 16; i++ ) {
+						result += chars.charAt( Math.floor( Math.random() * chars.length ) );
+					}
+				}
+
+				$password.val( result ).trigger( 'focus' );
+			} );
+
+			$accountToggle.on( 'change', toggleAccountFields );
+			toggleAccountFields();
+
+			if ( $.trim( $username.val() ) ) {
+				checkUsername();
+			}
+
+			$companyForm.on( 'submit', function ( event ) {
+				if ( ! $accountToggle.is( ':checked' ) ) {
+					return;
+				}
+
+				if ( '0' === $username.attr( 'data-mms-available' ) ) {
+					event.preventDefault();
+					$username.trigger( 'focus' );
+				}
+			} );
+		}
 	} );
 } )( jQuery );

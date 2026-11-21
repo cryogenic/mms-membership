@@ -141,6 +141,17 @@ class MMS_Admin {
 			MMS_MEMBERSHIP_VERSION,
 			true
 		);
+
+		wp_localize_script(
+			'mms-admin',
+			'mmsAdmin',
+			array(
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'usernameNonce' => wp_create_nonce( 'mms_check_username' ),
+				'checkingText'  => __( 'Checking availability…', 'mms-membership' ),
+				'errorText'     => __( 'Availability could not be checked. Try again.', 'mms-membership' ),
+			)
+		);
 	}
 
 	/**

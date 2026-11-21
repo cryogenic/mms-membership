@@ -29,6 +29,7 @@ class MMS_Emails {
 		return array(
 			'approved' => __( 'Application approved — payment pending', 'mms-membership' ),
 			'payment'  => __( 'Payment received — receipt ready', 'mms-membership' ),
+			'account'  => __( 'Member account — login details', 'mms-membership' ),
 		);
 	}
 
@@ -58,6 +59,16 @@ class MMS_Emails {
 				) . '</p>'
 					. '<p>' . esc_html__( 'Thank you. Your payment for {company_name} has been received. Your membership is active until {expiry_date}.', 'mms-membership' ) . '</p>',
 			),
+			'account'  => array(
+				'subject' => __( 'Your MACM member account — {reference}', 'mms-membership' ),
+				'body'    => '<p>' . sprintf(
+					/* translators: %s: Person In Charge name */
+					esc_html__( 'Dear %s,', 'mms-membership' ),
+					'{name}'
+				) . '</p>'
+					. '<p>' . esc_html__( 'A member account has been created for {company_name}. Use the login details below to sign in to the member portal.', 'mms-membership' ) . '</p>'
+					. '<p>' . esc_html__( 'For your security, please change your password after signing in.', 'mms-membership' ) . '</p>',
+			),
 		);
 	}
 
@@ -85,6 +96,13 @@ class MMS_Emails {
 				'{membership_no}' => __( 'Membership number', 'mms-membership' ),
 				'{start_date}'   => __( 'Membership start date', 'mms-membership' ),
 				'{expiry_date}'  => __( 'Membership expiry date', 'mms-membership' ),
+			);
+		}
+
+		if ( 'account' === $key ) {
+			$common += array(
+				'{username}' => __( 'Member username', 'mms-membership' ),
+				'{password}' => __( 'Temporary password', 'mms-membership' ),
 			);
 		}
 
@@ -163,6 +181,8 @@ class MMS_Emails {
 			'membership_no'   => isset( $args['membership_no'] ) ? (string) $args['membership_no'] : '',
 			'start_date'      => isset( $args['start_date'] ) ? (string) $args['start_date'] : '',
 			'expiry_date'     => isset( $args['expiry_date'] ) ? (string) $args['expiry_date'] : '',
+			'username'        => isset( $args['username'] ) ? (string) $args['username'] : '',
+			'password'        => isset( $args['password'] ) ? (string) $args['password'] : '',
 			'login_url'       => MMS_Members::login_url(),
 			'portal_url'      => MMS_Members::portal_url(),
 			'site_name'       => wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ),

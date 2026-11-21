@@ -600,6 +600,45 @@
 	color: var(--mms-muted);
 }
 
+.mms-admin-ui .mms-account-fields.is-disabled {
+	opacity: 0.55;
+}
+
+.mms-admin-ui .mms-password-row {
+	display: flex;
+	gap: 8px;
+}
+
+.mms-admin-ui .mms-password-row input {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: Consolas, Monaco, monospace;
+}
+
+.mms-admin-ui .mms-password-row .mms-btn {
+	white-space: nowrap;
+}
+
+.mms-admin-ui .mms-username-status {
+	min-height: 16px;
+	font-size: 11px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-username-status.is-ok {
+	color: #00844a;
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-username-status.is-bad {
+	color: #b32d2e;
+}
+
+.mms-admin-ui .mms-username-status.is-checking {
+	color: #646970;
+	font-style: italic;
+}
+
 .mms-admin-ui .mms-check {
 	display: flex;
 	align-items: flex-start;
