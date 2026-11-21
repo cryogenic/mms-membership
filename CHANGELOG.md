@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1
+- Release notes in the Plugins update screen are now generated from this changelog.
+- Release workflow can update an existing GitHub release instead of failing on re-runs.
+
 ## 0.12.0
 - Add GitHub release updates through Plugin Update Checker v6: standard "Update Now" in Plugins, release notes as changelog.
 - Separate `MMS_DB_VERSION` from the plugin version; schema upgrades run on `plugins_loaded` with a transient lock, with `admin_init` as fallback.
