@@ -1,0 +1,10 @@
+.git
+.github
+bin
+dist
+vendor/bin
+composer.json
+composer.lock
+.gitignore
+.distignore
+CHANGELOG.md

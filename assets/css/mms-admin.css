@@ -1,0 +1,372 @@
+/* Gaya admin MMS */
+.mms-wrap h1 {
+	margin-bottom: 6px;
+}
+
+.mms-wrap .mms-muted {
+	color: #646970;
+	max-width: 780px;
+}
+
+.mms-table {
+	margin-top: 8px;
+	max-width: 100%;
+}
+
+.mms-table th {
+	font-weight: 600;
+}
+
+.mms-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	background: #eaf3f5;
+	color: #0f4c5c;
+}
+
+/* Borang tetapan */
+.mms-col-num,
+.mms-col-act {
+	width: 34px;
+}
+
+.mms-col-fee {
+	width: 90px;
+}
+
+.mms-col-cur,
+.mms-col-dur {
+	width: 80px;
+}
+
+.mms-input-slug {
+	width: 120px;
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+}
+
+.mms-input-cur {
+	width: 55px;
+	text-transform: uppercase;
+}
+
+.mms-docs-cell {
+	vertical-align: top;
+}
+
+.mms-doc-option {
+	display: block;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.mms-remove-row {
+	color: #b32d2e;
+	font-size: 18px;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+/* Senarai permohonan */
+.mms-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 0 4px;
+}
+
+.mms-filters input[type="search"] {
+	min-width: 280px;
+}
+
+.mms-filters-reset {
+	font-size: 13px;
+}
+
+.mms-status {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 11px;
+	background: #f0f0f1;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.mms-status-submitted,
+.mms-status-under_review {
+	background: #eaf3f5;
+	color: #0f4c5c;
+}
+
+.mms-status-need_info {
+	background: #fcf9e8;
+	color: #8a5f00;
+}
+
+.mms-status-rejected,
+.mms-status-expired {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.mms-status-approved_unpaid {
+	background: #fdf2e7;
+	color: #8a4b00;
+}
+
+.mms-status-active {
+	background: #edfaef;
+	color: #1a6b2b;
+}
+
+.mms-applications-table td {
+	vertical-align: middle;
+}
+
+/* Skrin butiran */
+.mms-detail-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 14px;
+	margin: 14px 0 18px;
+}
+
+.mms-detail-meta {
+	color: #646970;
+	font-size: 13px;
+}
+
+.mms-certificate-link {
+	display: inline-flex;
+	align-items: center;
+	padding: 7px 14px;
+	border-radius: 6px;
+	background: #0f4c5c;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.mms-certificate-link:hover,
+.mms-certificate-link:focus {
+	background: #0a3742;
+	color: #fff;
+}
+
+.mms-detail-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.mms-card {
+	padding: 16px 20px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.mms-card h2 {
+	margin: 0 0 10px;
+	font-size: 14px;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: #50575e;
+}
+
+.mms-kv {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.mms-kv th {
+	width: 38%;
+	padding: 6px 8px 6px 0;
+	text-align: left;
+	vertical-align: top;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.mms-kv td {
+	padding: 6px 0;
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.mms-section-title {
+	margin: 28px 0 12px;
+	font-size: 16px;
+}
+
+.mms-doc-card {
+	margin-bottom: 16px;
+	border: 1px solid #dcdcde;
+	border-left-width: 4px;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.mms-doc-pending {
+	border-left-color: #c3c4c7;
+}
+
+.mms-doc-ok {
+	border-left-color: #1a6b2b;
+}
+
+.mms-doc-reject {
+	border-left-color: #b32d2e;
+}
+
+.mms-doc-card-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px 18px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.mms-doc-card-head .mms-muted {
+	margin-top: 4px;
+	font-size: 12px;
+}
+
+.mms-doc-status {
+	padding: 3px 10px;
+	border-radius: 11px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.mms-doc-status-ok {
+	background: #edfaef;
+	color: #1a6b2b;
+}
+
+.mms-doc-status-reject {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.mms-doc-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+	gap: 20px;
+	padding: 16px 18px;
+}
+
+@media (max-width: 1100px) {
+	.mms-doc-body {
+		grid-template-columns: 1fr;
+	}
+}
+
+.mms-doc-preview iframe {
+	width: 100%;
+	height: 420px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #f6f7f7;
+}
+
+.mms-doc-preview img {
+	max-width: 100%;
+	height: auto;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.mms-doc-links {
+	margin: 8px 0 0;
+	font-size: 13px;
+}
+
+.mms-doc-review fieldset {
+	margin: 0 0 12px;
+	padding: 0;
+	border: 0;
+}
+
+.mms-doc-review legend {
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.mms-radio {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.mms-doc-review label[for^="mms-note-"] {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.mms-badge {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 1px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.mms-badge-required {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+/* Keputusan permohonan */
+.mms-decision-warning {
+	margin: 0 0 14px;
+	padding: 10px 14px;
+	border-left: 4px solid #b32d2e;
+	background: #fcf0f1;
+	color: #8a1f20;
+}
+
+.mms-last-note {
+	padding: 10px 14px;
+	border-left: 4px solid #dcdcde;
+	background: #f6f7f7;
+}
+
+.mms-decision-form fieldset {
+	margin: 0 0 12px;
+	padding: 0;
+	border: 0;
+}
+
+.mms-decision-form legend {
+	margin-bottom: 6px;
+	font-weight: 600;
+}
+
+.mms-resume-link {
+	padding: 10px 14px;
+	border-left: 4px solid #0f4c5c;
+	background: #eaf3f5;
+}
+
+.mms-decision-form label[for="mms-decision-note"] {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}

@@ -1,0 +1,1386 @@
+/*
+ * Premium MMS admin dashboard.
+ *
+ * Every rule is scoped under .mms-admin-ui so WordPress admin and the
+ * Astra front end are never affected. Loaded on MMS admin screens only.
+ */
+
+.mms-admin-ui {
+	--mms-ink: #0d2b33;
+	--mms-teal: #0f4c5c;
+	--mms-teal-dark: #0a3742;
+	--mms-gold: #c9a227;
+	--mms-line: #e3e8ea;
+	--mms-soft: #f4f7f8;
+	--mms-muted: #5b6b70;
+	--mms-radius: 14px;
+	--mms-shadow: 0 1px 2px rgba(13, 43, 51, 0.06), 0 8px 24px rgba(13, 43, 51, 0.06);
+	margin-right: 20px;
+	color: var(--mms-ink);
+}
+
+/* ---------- Hero ---------- */
+.mms-admin-ui .mms-hero {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 20px;
+	margin: 16px 0 24px;
+	padding: 28px 32px;
+	border-radius: var(--mms-radius);
+	background:
+		radial-gradient(120% 160% at 100% 0%, rgba(201, 162, 39, 0.28) 0%, rgba(201, 162, 39, 0) 45%),
+		linear-gradient(125deg, #0d3b46 0%, #0f4c5c 55%, #146170 100%);
+	color: #fff;
+	box-shadow: 0 16px 36px rgba(10, 55, 66, 0.22);
+	overflow: hidden;
+}
+
+.mms-admin-ui .mms-hero::after {
+	content: "";
+	position: absolute;
+	right: -60px;
+	top: -60px;
+	width: 220px;
+	height: 220px;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 50%;
+}
+
+.mms-admin-ui .mms-hero-eyebrow {
+	margin: 0 0 6px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: rgba(255, 255, 255, 0.72);
+}
+
+.mms-admin-ui .mms-hero h1 {
+	margin: 0;
+	padding: 0;
+	font-size: 30px;
+	line-height: 1.15;
+	font-weight: 700;
+	color: #fff;
+}
+
+.mms-admin-ui .mms-hero-sub {
+	margin: 8px 0 0;
+	max-width: 560px;
+	font-size: 14px;
+	line-height: 1.55;
+	color: rgba(255, 255, 255, 0.82);
+}
+
+.mms-admin-ui .mms-hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	position: relative;
+	z-index: 1;
+}
+
+.mms-admin-ui .mms-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 9px 16px;
+	border: 1px solid transparent;
+	border-radius: 9px;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.mms-admin-ui .mms-btn .dashicons {
+	font-size: 17px;
+	width: 17px;
+	height: 17px;
+	line-height: 1;
+}
+
+.mms-admin-ui .mms-btn-primary {
+	background: var(--mms-gold);
+	border-color: var(--mms-gold);
+	color: #241c00;
+}
+
+.mms-admin-ui .mms-btn-primary:hover,
+.mms-admin-ui .mms-btn-primary:focus {
+	background: #dfb52f;
+	border-color: #dfb52f;
+	color: #241c00;
+}
+
+.mms-admin-ui .mms-btn-ghost {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.4);
+	color: #fff;
+}
+
+.mms-admin-ui .mms-btn-ghost:hover,
+.mms-admin-ui .mms-btn-ghost:focus {
+	background: rgba(255, 255, 255, 0.2);
+	border-color: #fff;
+	color: #fff;
+}
+
+.mms-admin-ui .mms-btn-outline {
+	border-color: var(--mms-line);
+	background: #fff;
+	color: var(--mms-teal);
+}
+
+.mms-admin-ui .mms-btn-outline:hover,
+.mms-admin-ui .mms-btn-outline:focus {
+	border-color: var(--mms-teal);
+	color: var(--mms-teal);
+	background: var(--mms-soft);
+}
+
+/* ---------- Stat cards ---------- */
+.mms-admin-ui .mms-stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 14px;
+	margin: 0 0 26px;
+}
+
+.mms-admin-ui .mms-stat {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 18px 20px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-stat-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.mms-admin-ui .mms-stat-label {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-stat-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	background: var(--mms-soft);
+	color: var(--mms-teal);
+}
+
+.mms-admin-ui .mms-stat-icon .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	line-height: 1;
+}
+
+.mms-admin-ui .mms-stat-value {
+	font-size: 30px;
+	font-weight: 700;
+	line-height: 1.1;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-stat-note {
+	font-size: 12px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-stat-note a {
+	color: var(--mms-teal);
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-stat.is-warn .mms-stat-icon {
+	background: #fdf1e3;
+	color: #a25c00;
+}
+
+.mms-admin-ui .mms-stat.is-danger .mms-stat-icon {
+	background: #fbeaea;
+	color: #a52a2a;
+}
+
+.mms-admin-ui .mms-stat.is-ok .mms-stat-icon {
+	background: #e8f6ec;
+	color: #1a6b2b;
+}
+
+/* ---------- Section heading ---------- */
+.mms-admin-ui .mms-section {
+	margin: 0 0 28px;
+}
+
+.mms-admin-ui .mms-section-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	margin: 0 0 14px;
+}
+
+.mms-admin-ui .mms-section-head h2 {
+	margin: 0;
+	padding: 0;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-section-head p {
+	margin: 0;
+	font-size: 13px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-section-head a {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--mms-teal);
+	text-decoration: none;
+}
+
+/* ---------- Kanban ---------- */
+.mms-admin-ui .mms-kanban {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(250px, 1fr);
+	gap: 14px;
+	padding-bottom: 10px;
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+}
+
+.mms-admin-ui .mms-kanban-col {
+	display: flex;
+	flex-direction: column;
+	min-height: 220px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: var(--mms-soft);
+}
+
+.mms-admin-ui .mms-kanban-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 13px 16px 11px;
+	border-bottom: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius) var(--mms-radius) 0 0;
+	background: #fff;
+}
+
+.mms-admin-ui .mms-kanban-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-kanban-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: #9aa7ab;
+}
+
+.mms-admin-ui .mms-kanban-count {
+	min-width: 26px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--mms-soft);
+	font-size: 12px;
+	font-weight: 700;
+	text-align: center;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-kanban-col[data-tone="info"] .mms-kanban-dot { background: #2f7d95; }
+.mms-admin-ui .mms-kanban-col[data-tone="warn"] .mms-kanban-dot { background: #d08512; }
+.mms-admin-ui .mms-kanban-col[data-tone="danger"] .mms-kanban-dot { background: #b33a3a; }
+.mms-admin-ui .mms-kanban-col[data-tone="ok"] .mms-kanban-dot { background: #2f8f4e; }
+.mms-admin-ui .mms-kanban-col[data-tone="expiring"] .mms-kanban-dot { background: #c9a227; }
+
+.mms-admin-ui .mms-kanban-col[data-tone="info"] .mms-kanban-count { background: #e9f2f5; color: #1f6073; }
+.mms-admin-ui .mms-kanban-col[data-tone="warn"] .mms-kanban-count { background: #fdf1e3; color: #8f5200; }
+.mms-admin-ui .mms-kanban-col[data-tone="danger"] .mms-kanban-count { background: #fbeaea; color: #8f2323; }
+.mms-admin-ui .mms-kanban-col[data-tone="ok"] .mms-kanban-count { background: #e8f6ec; color: #17602a; }
+.mms-admin-ui .mms-kanban-col[data-tone="expiring"] .mms-kanban-count { background: #faf3d9; color: #7a5c00; }
+
+.mms-admin-ui .mms-kanban-body {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px;
+}
+
+.mms-admin-ui .mms-kanban-empty {
+	margin: 6px 4px;
+	font-size: 12px;
+	color: #8b989c;
+}
+
+.mms-admin-ui .mms-kanban-card {
+	display: block;
+	padding: 11px 12px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(13, 43, 51, 0.06);
+	text-decoration: none;
+	color: inherit;
+	transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mms-admin-ui .mms-kanban-card:hover {
+	border-color: #bcd3d9;
+	transform: translateY(-1px);
+	box-shadow: 0 6px 16px rgba(13, 43, 51, 0.1);
+	color: inherit;
+}
+
+.mms-admin-ui .mms-kanban-card strong {
+	display: block;
+	font-size: 13px;
+	line-height: 1.35;
+	color: var(--mms-ink);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.mms-admin-ui .mms-kanban-card span {
+	display: block;
+	margin-top: 2px;
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-kanban-card .mms-kanban-flag {
+	color: #8f5200;
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-kanban-more {
+	margin-top: 2px;
+	font-size: 12px;
+	font-weight: 600;
+	text-align: center;
+	color: var(--mms-teal);
+	text-decoration: none;
+}
+
+.mms-admin-ui .mms-kanban-more:hover {
+	color: var(--mms-teal-dark);
+}
+
+/* ---------- Company table ---------- */
+.mms-admin-ui .mms-panel {
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+	overflow: hidden;
+}
+
+.mms-admin-ui .mms-company-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-company-table thead th {
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--mms-line);
+	background: var(--mms-soft);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	text-align: left;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-company-table tbody td {
+	padding: 12px 16px;
+	border-bottom: 1px solid #eef2f3;
+	vertical-align: middle;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-company-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.mms-admin-ui .mms-company-table tbody tr:hover {
+	background: #fafcfc;
+}
+
+.mms-admin-ui .mms-company-name {
+	font-weight: 600;
+	color: var(--mms-ink);
+	text-decoration: none;
+}
+
+.mms-admin-ui .mms-company-name:hover {
+	color: var(--mms-teal);
+}
+
+.mms-admin-ui .mms-company-reg {
+	display: block;
+	margin-top: 2px;
+	font-size: 11px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-mono {
+	font-family: Consolas, Monaco, monospace;
+	font-size: 12px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-pill {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 999px;
+	background: #f0f2f3;
+	font-size: 11px;
+	font-weight: 700;
+	white-space: nowrap;
+	color: #4a5a5f;
+}
+
+.mms-admin-ui .mms-pill.is-submitted,
+.mms-admin-ui .mms-pill.is-under_review { background: #e9f2f5; color: #1f6073; }
+.mms-admin-ui .mms-pill.is-need_info { background: #fdf1e3; color: #8f5200; }
+.mms-admin-ui .mms-pill.is-approved_unpaid { background: #faf3d9; color: #7a5c00; }
+.mms-admin-ui .mms-pill.is-active { background: #e8f6ec; color: #17602a; }
+.mms-admin-ui .mms-pill.is-rejected { background: #fbeaea; color: #8f2323; }
+.mms-admin-ui .mms-pill.is-expired { background: #f0f2f3; color: #5b6b70; }
+
+.mms-admin-ui .mms-row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+.mms-admin-ui .mms-row-actions a {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-teal);
+	text-decoration: none;
+}
+
+.mms-admin-ui .mms-row-actions a:hover {
+	text-decoration: underline;
+}
+
+.mms-admin-ui .mms-table-empty {
+	padding: 28px 16px;
+	text-align: center;
+	color: var(--mms-muted);
+}
+
+/* ---------- Forms (manual company) ---------- */
+.mms-admin-ui .mms-form-card {
+	margin-bottom: 18px;
+	padding: 22px 24px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-form-card h2 {
+	margin: 0 0 4px;
+	padding: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-form-card > p {
+	margin: 0 0 18px;
+	font-size: 13px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 14px 18px;
+}
+
+.mms-admin-ui .mms-form-field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.mms-admin-ui .mms-form-field.is-wide {
+	grid-column: 1 / -1;
+}
+
+.mms-admin-ui .mms-form-field label {
+	font-size: 12px;
+	font-weight: 700;
+	color: #3a4a4f;
+}
+
+.mms-admin-ui .mms-form-field label .mms-req {
+	color: #b32d2e;
+}
+
+.mms-admin-ui .mms-form-field input[type="text"],
+.mms-admin-ui .mms-form-field input[type="email"],
+.mms-admin-ui .mms-form-field input[type="tel"],
+.mms-admin-ui .mms-form-field input[type="url"],
+.mms-admin-ui .mms-form-field input[type="date"],
+.mms-admin-ui .mms-form-field input[type="number"],
+.mms-admin-ui .mms-form-field select,
+.mms-admin-ui .mms-form-field textarea {
+	width: 100%;
+	max-width: none;
+	margin: 0;
+	padding: 8px 10px;
+	border: 1px solid #c9d3d6;
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--mms-ink);
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-form-field input:focus,
+.mms-admin-ui .mms-form-field select:focus,
+.mms-admin-ui .mms-form-field textarea:focus {
+	border-color: var(--mms-teal);
+	box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.15);
+	outline: none;
+}
+
+.mms-admin-ui .mms-form-field textarea {
+	min-height: 82px;
+	resize: vertical;
+}
+
+.mms-admin-ui .mms-form-hint {
+	font-size: 11px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-check {
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-check input {
+	margin-top: 2px;
+}
+
+.mms-admin-ui .mms-form-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin: 22px 0 8px;
+}
+
+.mms-admin-ui .mms-form-actions .mms-btn-primary {
+	background: var(--mms-teal);
+	border-color: var(--mms-teal);
+	color: #fff;
+	padding: 10px 22px;
+	font-size: 14px;
+}
+
+.mms-admin-ui .mms-form-actions .mms-btn-primary:hover,
+.mms-admin-ui .mms-form-actions .mms-btn-primary:focus {
+	background: var(--mms-teal-dark);
+	border-color: var(--mms-teal-dark);
+	color: #fff;
+}
+
+.mms-admin-ui .mms-form-actions .mms-btn-outline {
+	padding: 10px 18px;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-errors {
+	margin: 0 0 18px;
+	padding: 14px 18px;
+	border-left: 4px solid #b32d2e;
+	border-radius: 8px;
+	background: #fbeaea;
+	color: #7f1f1f;
+}
+
+.mms-admin-ui .mms-errors ul {
+	margin: 6px 0 0;
+	padding-left: 18px;
+}
+
+.mms-admin-ui .mms-errors p {
+	margin: 0;
+	font-weight: 600;
+}
+
+@media (max-width: 782px) {
+	.mms-admin-ui {
+		margin-right: 10px;
+	}
+
+	.mms-admin-ui .mms-hero {
+		padding: 22px;
+	}
+
+	.mms-admin-ui .mms-hero h1 {
+		font-size: 24px;
+	}
+
+	.mms-admin-ui .mms-company-table thead {
+		display: none;
+	}
+
+	.mms-admin-ui .mms-company-table tbody td {
+		display: block;
+		padding: 8px 14px;
+		border-bottom: 0;
+	}
+
+	.mms-admin-ui .mms-company-table tbody tr {
+		display: block;
+		padding: 8px 0;
+		border-bottom: 1px solid #eef2f3;
+	}
+
+	.mms-admin-ui .mms-row-actions {
+		justify-content: flex-start;
+	}
+}
+
+/* ---------- Compact hero (list, report & settings screens) ---------- */
+.mms-admin-ui .mms-hero-compact {
+	align-items: center;
+	margin: 14px 0 20px;
+	padding: 22px 28px;
+}
+
+.mms-admin-ui .mms-hero-compact h1 {
+	font-size: 24px;
+}
+
+.mms-admin-ui .mms-hero-compact .mms-hero-sub {
+	max-width: 720px;
+	margin-top: 5px;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-stat-value-sm {
+	font-size: 18px;
+	line-height: 1.35;
+}
+
+/* ---------- Filter toolbar ---------- */
+.mms-admin-ui .mms-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 18px;
+	margin: 0 0 16px;
+	padding: 12px 16px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-toolbar .mms-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+}
+
+.mms-admin-ui .mms-filters select,
+.mms-admin-ui .mms-filters input[type="search"] {
+	height: 34px;
+	margin: 0;
+	padding: 0 10px;
+	border: 1px solid #c9d3d6;
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	color: var(--mms-ink);
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-filters input[type="search"] {
+	min-width: 240px;
+}
+
+.mms-admin-ui .mms-filters select:focus,
+.mms-admin-ui .mms-filters input[type="search"]:focus {
+	border-color: var(--mms-teal);
+	box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.15);
+	outline: none;
+}
+
+.mms-admin-ui .mms-filters .button {
+	height: 34px;
+	margin: 0;
+	padding: 0 18px;
+	border: 1px solid var(--mms-teal);
+	border-radius: 8px;
+	background: var(--mms-teal);
+	color: #fff;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 32px;
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-filters .button:hover,
+.mms-admin-ui .mms-filters .button:focus {
+	border-color: var(--mms-teal-dark);
+	background: var(--mms-teal-dark);
+	color: #fff;
+}
+
+.mms-admin-ui .mms-filters-reset {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-muted);
+	text-decoration: none;
+}
+
+.mms-admin-ui .mms-filters-reset:hover {
+	color: var(--mms-teal);
+}
+
+.mms-admin-ui .mms-toolbar-count {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-muted);
+	white-space: nowrap;
+}
+
+/* ---------- Table cards (list, report & settings) ---------- */
+.mms-admin-ui .mms-table-card {
+	margin: 0 0 26px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+	overflow: auto;
+}
+
+.mms-admin-ui .mms-table-card .mms-table {
+	margin: 0;
+	border: 0;
+	box-shadow: none;
+}
+
+.mms-admin-ui table.widefat.mms-table {
+	border: 1px solid var(--mms-line);
+	border-radius: 10px;
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+}
+
+.mms-admin-ui .mms-table-card table.widefat.mms-table {
+	border: 0;
+	border-radius: 0;
+}
+
+.mms-admin-ui table.widefat.mms-table thead th {
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--mms-line);
+	background: var(--mms-soft);
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui table.widefat.mms-table tbody td {
+	padding: 12px 16px;
+	border-bottom: 1px solid #eef2f3;
+	font-size: 13px;
+	color: var(--mms-ink);
+	vertical-align: middle;
+}
+
+.mms-admin-ui table.widefat.mms-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.mms-admin-ui table.widefat.mms-table tbody tr:hover {
+	background: #fafcfc;
+}
+
+.mms-admin-ui table.striped > tbody > :nth-child(odd) {
+	background-color: #fff;
+}
+
+.mms-admin-ui .mms-bulk-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--mms-line);
+	background: #fff;
+}
+
+.mms-admin-ui .mms-bulk-bar select {
+	height: 34px;
+	margin: 0;
+	padding: 0 10px;
+	border: 1px solid #c9d3d6;
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	color: var(--mms-ink);
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-bulk-bar select:focus {
+	border-color: var(--mms-teal);
+	box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.15);
+	outline: none;
+}
+
+.mms-admin-ui .mms-bulk-apply {
+	height: 34px;
+	padding: 0 18px;
+	border-radius: 8px;
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-bulk-apply[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.mms-admin-ui .mms-bulk-count {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-bulk-hint {
+	margin-left: auto;
+	font-size: 11px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-col-check {
+	width: 34px;
+	text-align: center;
+	vertical-align: middle;
+}
+
+.mms-admin-ui table.widefat.mms-table td.mms-col-check,
+.mms-admin-ui table.widefat.mms-table th.mms-col-check {
+	padding-right: 0;
+}
+
+.mms-admin-ui .mms-table-card .tablenav {
+	height: auto;
+	margin: 0;
+	padding: 10px 16px;
+	border-top: 1px solid var(--mms-line);
+}
+
+.mms-admin-ui .tablenav-pages .page-numbers {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 28px;
+	height: 28px;
+	margin: 0 2px;
+	border: 1px solid var(--mms-line);
+	border-radius: 7px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-teal);
+	text-decoration: none;
+}
+
+.mms-admin-ui .tablenav-pages .page-numbers.current {
+	border-color: var(--mms-teal);
+	background: var(--mms-teal);
+	color: #fff;
+}
+
+/* ---------- Buttons inside MMS screens ---------- */
+.mms-admin-ui .button,
+.mms-admin-ui .button-secondary {
+	border-radius: 8px;
+	border-color: #c9d3d6;
+	color: var(--mms-teal);
+	font-weight: 600;
+	box-shadow: none;
+}
+
+.mms-admin-ui .button:hover,
+.mms-admin-ui .button:focus,
+.mms-admin-ui .button-secondary:hover,
+.mms-admin-ui .button-secondary:focus {
+	border-color: var(--mms-teal);
+	background: var(--mms-soft);
+	color: var(--mms-teal-dark);
+}
+
+.mms-admin-ui .button-primary {
+	border-color: var(--mms-teal);
+	background: var(--mms-teal);
+	color: #fff;
+}
+
+.mms-admin-ui .button-primary:hover,
+.mms-admin-ui .button-primary:focus {
+	border-color: var(--mms-teal-dark);
+	background: var(--mms-teal-dark);
+	color: #fff;
+}
+
+/* ---------- Detail screen ---------- */
+.mms-admin-ui .mms-detail-summary {
+	gap: 14px;
+	margin: 0 0 20px;
+	padding: 14px 18px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-detail-meta {
+	color: var(--mms-muted);
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-detail-meta strong {
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-detail-grid {
+	gap: 16px;
+}
+
+.mms-admin-ui .mms-card {
+	padding: 20px 22px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-card h2 {
+	margin: 0 0 14px;
+	padding: 0 0 10px;
+	border-bottom: 1px solid var(--mms-line);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-kv th {
+	width: 38%;
+	padding: 7px 12px 7px 0;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-kv td {
+	padding: 7px 0;
+	font-size: 13px;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-section-title {
+	margin: 30px 0 14px;
+	padding: 0 0 8px;
+	border-bottom: 1px solid var(--mms-line);
+	font-size: 17px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-doc-card {
+	border: 1px solid var(--mms-line);
+	border-left-width: 4px;
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+.mms-admin-ui .mms-doc-card-head {
+	padding: 14px 18px;
+	border-bottom: 1px solid var(--mms-line);
+	background: var(--mms-soft);
+}
+
+.mms-admin-ui .mms-doc-status {
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.mms-admin-ui .mms-doc-review fieldset {
+	margin: 0 0 14px;
+}
+
+.mms-admin-ui .mms-doc-review legend,
+.mms-admin-ui .mms-decision-form legend {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-radio {
+	margin-bottom: 6px;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-doc-review textarea,
+.mms-admin-ui .mms-decision-form textarea,
+.mms-admin-ui .mms-resume-link input {
+	border: 1px solid #c9d3d6;
+	border-radius: 8px;
+	box-shadow: none;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-decision {
+	border-top: 3px solid var(--mms-gold);
+}
+
+.mms-admin-ui .mms-decision-warning {
+	border-left: 4px solid #b32d2e;
+	border-radius: 8px;
+}
+
+.mms-admin-ui .mms-last-note,
+.mms-admin-ui .mms-resume-link {
+	border-radius: 8px;
+}
+
+/* ---------- Settings screen ---------- */
+.mms-admin-ui .mms-settings-form {
+	max-width: 100%;
+}
+
+.mms-admin-ui .mms-settings-form .mms-form-card {
+	margin-bottom: 20px;
+	padding: 24px 26px;
+}
+
+.mms-admin-ui .mms-settings-form .mms-form-card h2 {
+	margin: 0 0 6px;
+	padding: 0;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-settings-form .mms-form-card > p {
+	margin: 0 0 16px;
+	max-width: 900px;
+	font-size: 13px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-table-scroll {
+	max-width: 100%;
+	overflow-x: auto;
+	border: 1px solid var(--mms-line);
+	border-radius: 10px;
+}
+
+.mms-admin-ui .mms-table-scroll table.widefat.mms-table {
+	border: 0;
+	border-radius: 0;
+}
+
+.mms-admin-ui .mms-settings-table input[type="text"],
+.mms-admin-ui .mms-settings-table input[type="number"] {
+	height: 32px;
+	margin: 0;
+	padding: 0 8px;
+	border: 1px solid #c9d3d6;
+	border-radius: 7px;
+	background: #fff;
+	font-size: 12.5px;
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-settings-table input:focus {
+	border-color: var(--mms-teal);
+	box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.15);
+	outline: none;
+}
+
+.mms-admin-ui .mms-settings-table .mms-input-slug {
+	width: 132px;
+}
+
+.mms-admin-ui .mms-settings-table .mms-input-code {
+	width: 96px;
+	text-transform: uppercase;
+}
+
+.mms-admin-ui .mms-settings-table th.mms-col-code {
+	width: 130px;
+}
+
+.mms-admin-ui .mms-settings-table .mms-doc-option {
+	white-space: normal;
+}
+
+.mms-admin-ui .mms-remove-row {
+	color: #b32d2e;
+}
+
+.mms-admin-ui .mms-table-actions {
+	margin: 12px 0 0;
+}
+
+.mms-admin-ui .mms-add-row {
+	border-color: var(--mms-teal);
+	border-radius: 8px;
+	background: #fff;
+	color: var(--mms-teal);
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-add-row:hover,
+.mms-admin-ui .mms-add-row:focus {
+	border-color: var(--mms-teal-dark);
+	background: var(--mms-soft);
+	color: var(--mms-teal-dark);
+}
+
+.mms-admin-ui .mms-payment-form {
+	margin: 4px 0 0;
+}
+
+.mms-admin-ui .mms-payment-form th {
+	width: 220px;
+	padding: 12px 16px 12px 0;
+	font-size: 12px;
+	font-weight: 700;
+	color: #3a4a4f;
+}
+
+.mms-admin-ui .mms-payment-form td {
+	padding: 9px 0;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-payment-form input[type="text"],
+.mms-admin-ui .mms-payment-form input[type="password"],
+.mms-admin-ui .mms-payment-form select {
+	min-height: 36px;
+	margin: 0;
+	padding: 4px 10px;
+	border: 1px solid #c9d3d6;
+	border-radius: 8px;
+	font-size: 13px;
+	box-shadow: none;
+}
+
+.mms-admin-ui .mms-payment-form input:focus,
+.mms-admin-ui .mms-payment-form select:focus {
+	border-color: var(--mms-teal);
+	box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.15);
+	outline: none;
+}
+
+.mms-admin-ui .mms-payment-form .description {
+	font-size: 12px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-settings-form .mms-form-actions {
+	margin: 8px 0 0;
+	padding: 18px 26px;
+	border: 1px solid var(--mms-line);
+	border-radius: var(--mms-radius);
+	background: #fff;
+	box-shadow: var(--mms-shadow);
+}
+
+/* ---------- Notices ---------- */
+.mms-admin-ui .notice {
+	margin: 0 0 16px;
+	border-radius: 10px;
+	box-shadow: var(--mms-shadow);
+}
+
+@media (max-width: 782px) {
+	.mms-admin-ui .mms-hero-compact {
+		padding: 20px;
+	}
+
+	.mms-admin-ui .mms-hero-compact h1 {
+		font-size: 21px;
+	}
+
+	.mms-admin-ui .mms-toolbar .mms-filters {
+		width: 100%;
+	}
+
+	.mms-admin-ui .mms-filters select,
+	.mms-admin-ui .mms-filters input[type="search"] {
+		width: 100%;
+	}
+
+	.mms-admin-ui .mms-toolbar-count {
+		white-space: normal;
+	}
+
+	.mms-admin-ui .mms-bulk-hint {
+		width: 100%;
+		margin-left: 0;
+	}
+
+	.mms-admin-ui .mms-payment-form th,
+	.mms-admin-ui .mms-payment-form td {
+		display: block;
+		width: 100%;
+		padding: 6px 0;
+	}
+}
+
+/* Payments and billing documents */
+.mms-admin-ui .mms-payment-docs a {
+	display: inline-block;
+	margin-right: 14px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--mms-teal);
+	text-decoration: none;
+}
+
+.mms-admin-ui .mms-payment-docs a:hover,
+.mms-admin-ui .mms-payment-docs a:focus {
+	color: var(--mms-teal-dark);
+	text-decoration: underline;
+}
+
+.mms-admin-ui .mms-payment-status.is-paid {
+	background: #e8f6ec;
+	color: #17602a;
+}
+
+.mms-admin-ui .mms-payment-status.is-pending {
+	background: #faf3d9;
+	color: #7a5c00;
+}
+
+.mms-admin-ui .mms-payment-status.is-failed,
+.mms-admin-ui .mms-payment-status.is-refund {
+	background: #fbeaea;
+	color: #8f2323;
+}
+
+.mms-admin-ui .mms-manual-payment {
+	margin-top: 22px;
+	padding-top: 20px;
+	border-top: 1px solid var(--mms-line);
+}
+
+.mms-admin-ui .mms-manual-payment h3 {
+	margin: 0 0 6px;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-manual-payment > p {
+	margin: 0 0 16px;
+	font-size: 12px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-manual-payment .mms-form-actions {
+	margin: 16px 0 0;
+}
+
+.mms-admin-ui .mms-logo-field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 18px 24px;
+}
+
+.mms-admin-ui .mms-logo-preview {
+	max-width: 280px;
+	height: auto;
+	padding: 12px;
+	border: 1px solid var(--mms-line);
+	border-radius: 8px;
+	background: #fff;
+}
+
+.mms-admin-ui .mms-logo-field .mms-form-field {
+	flex: 1 1 260px;
+}
+
+.mms-admin-ui .mms-logo-field .mms-form-field input[type="file"] {
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-logo-field .mms-check {
+	flex-basis: 100%;
+}
