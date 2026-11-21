@@ -1501,8 +1501,16 @@ class MMS_Admin_Applications {
 		$status = __( 'Payment pending', 'mms-membership' );
 		$login  = MMS_Members::login_url();
 
-		/* translators: %s: reference number */
-		$subject = sprintf( __( 'Application %s approved — payment pending', 'mms-membership' ), $reference );
+		$context = array(
+			'name'            => $name,
+			'company_name'    => isset( $meta['company_name'] ) ? $meta['company_name'] : '',
+			'reference'       => $reference,
+			'membership_type' => $type_name,
+			'amount'          => $amount,
+		);
+
+		$subject = MMS_Emails::subject( 'approved', $context );
+		$message = MMS_Emails::body( 'approved', $context );
 
 		$row = '<tr><td style="padding:6px 12px 6px 0;color:#646970;">%1$s</td><td style="padding:6px 0;font-weight:600;">%2$s</td></tr>';
 
@@ -1521,8 +1529,7 @@ class MMS_Admin_Applications {
 		$body = '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f0f1;font-family:Arial,Helvetica,sans-serif;color:#1d2327;">'
 			. '<div style="max-width:600px;margin:0 auto;padding:24px 12px;">'
 			. '<div style="background:#ffffff;border-radius:6px;padding:32px;">'
-			. '<p style="margin:0 0 16px;">' . esc_html( sprintf( /* translators: %s: applicant name */ __( 'Dear %s,', 'mms-membership' ), $name ) ) . '</p>'
-			. '<p style="margin:0 0 16px;">' . esc_html__( 'Good news — your membership application has been approved. Your membership will be activated once payment is received.', 'mms-membership' ) . '</p>'
+			. '<div style="margin:0 0 16px;font-size:15px;line-height:1.55;">' . $message . '</div>'
 			. '<table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:15px;">' . $details . '</table>'
 			. '<p style="margin:0 0 12px;">' . esc_html__( 'Set your password to access the member portal:', 'mms-membership' ) . '</p>'
 			. '<p style="margin:0 0 8px;"><a href="' . esc_url( $set_password_url ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Set your password', 'mms-membership' ) . '</a></p>'

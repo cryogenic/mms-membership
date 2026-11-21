@@ -102,6 +102,22 @@ class MMS_Settings {
 
 		$settings['invoice_logo_id'] = $logo_id;
 
+		$emails = isset( $settings['emails'] ) && is_array( $settings['emails'] ) ? $settings['emails'] : array();
+		foreach ( array_keys( MMS_Emails::template_keys() ) as $key ) {
+			if ( ! isset( $_POST['emails'][ $key ]['body'] ) ) {
+				continue;
+			}
+
+			$subject = isset( $_POST['emails'][ $key ]['subject'] ) ? sanitize_text_field( wp_unslash( $_POST['emails'][ $key ]['subject'] ) ) : '';
+			$body    = wp_kses_post( wp_unslash( $_POST['emails'][ $key ]['body'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+
+			$emails[ $key ] = array(
+				'subject' => $subject,
+				'body'    => $body,
+			);
+		}
+		$settings['emails'] = $emails;
+
 		update_option( self::OPTION, $settings, false );
 
 		self::redirect( 'saved' );
@@ -280,6 +296,11 @@ class MMS_Settings {
 		$payment = MMS_Payments::settings();
 		$all_settings = get_option( self::OPTION, array() );
 		$logo_id      = isset( $all_settings['invoice_logo_id'] ) ? absint( $all_settings['invoice_logo_id'] ) : 0;
+		$email_tpls   = array();
+
+		foreach ( array_keys( MMS_Emails::template_keys() ) as $email_key ) {
+			$email_tpls[ $email_key ] = MMS_Emails::get( $email_key );
+		}
 
 		$message = isset( $_GET['mms_msg'] ) ? sanitize_key( wp_unslash( $_GET['mms_msg'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
@@ -289,7 +310,7 @@ class MMS_Settings {
 				<div>
 					<p class="mms-hero-eyebrow"><?php esc_html_e( 'MACM Membership', 'mms-membership' ); ?></p>
 					<h1><?php esc_html_e( 'MMS Membership Settings', 'mms-membership' ); ?></h1>
-					<p class="mms-hero-sub"><?php esc_html_e( 'Membership types, fees, supporting document catalogue and online payment configuration.', 'mms-membership' ); ?></p>
+					<p class="mms-hero-sub"><?php esc_html_e( 'Membership types, fees, supporting document catalogue, email notifications and online payment configuration.', 'mms-membership' ); ?></p>
 				</div>
 				<div class="mms-hero-actions">
 					<a class="mms-btn mms-btn-ghost" href="<?php echo esc_url( admin_url( 'admin.php?page=mms-membership' ) ); ?>"><span class="dashicons dashicons-dashboard" aria-hidden="true"></span><?php esc_html_e( 'Dashboard', 'mms-membership' ); ?></a>
@@ -308,7 +329,27 @@ class MMS_Settings {
 				<input type="hidden" name="action" value="mms_save_settings" />
 				<?php wp_nonce_field( self::NONCE ); ?>
 
-			<div class="mms-form-card">
+			<nav class="mms-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Settings sections', 'mms-membership' ); ?>">
+				<?php
+				$tabs = array(
+					'types'    => __( 'Membership types', 'mms-membership' ),
+					'cert'     => __( 'Certificate numbering', 'mms-membership' ),
+					'docs'     => __( 'Documents', 'mms-membership' ),
+					'emails'   => __( 'Emails', 'mms-membership' ),
+					'branding' => __( 'Branding', 'mms-membership' ),
+					'payments' => __( 'Payments', 'mms-membership' ),
+				);
+				$tab_index = 0;
+				foreach ( $tabs as $tab_key => $tab_label ) :
+					?>
+					<button type="button" class="mms-tab<?php echo 0 === $tab_index ? ' is-active' : ''; ?>" id="mms-tab-<?php echo esc_attr( $tab_key ); ?>" role="tab" aria-controls="mms-panel-<?php echo esc_attr( $tab_key ); ?>" aria-selected="<?php echo 0 === $tab_index ? 'true' : 'false'; ?>" tabindex="<?php echo 0 === $tab_index ? '0' : '-1'; ?>" data-mms-tab="<?php echo esc_attr( $tab_key ); ?>"><?php echo esc_html( $tab_label ); ?></button>
+					<?php
+					$tab_index++;
+				endforeach;
+				?>
+			</nav>
+
+			<div class="mms-form-card mms-tab-panel is-active" id="mms-panel-types" role="tabpanel" aria-labelledby="mms-tab-types">
 				<h2><?php esc_html_e( 'Membership types & fees', 'mms-membership' ); ?></h2>
 				<p><?php esc_html_e( 'The key (slug) is used in URLs and application records — change it only if necessary. Tick the required and optional documents for each type.', 'mms-membership' ); ?></p>
 
@@ -369,7 +410,7 @@ class MMS_Settings {
 				<p class="mms-table-actions"><button type="button" class="button mms-add-row" data-mms-add="mms-types-table" data-mms-template="mms-type-template"><?php esc_html_e( '+ Add membership type', 'mms-membership' ); ?></button></p>
 			</div>
 
-			<div class="mms-form-card">
+			<div class="mms-form-card mms-tab-panel" id="mms-panel-cert" role="tabpanel" aria-labelledby="mms-tab-cert">
 				<h2><?php esc_html_e( 'Certificate numbering', 'mms-membership' ); ?></h2>
 				<p>
 					<?php
@@ -410,7 +451,7 @@ class MMS_Settings {
 				</div>
 			</div>
 
-			<div class="mms-form-card">
+			<div class="mms-form-card mms-tab-panel" id="mms-panel-docs" role="tabpanel" aria-labelledby="mms-tab-docs">
 				<h2><?php esc_html_e( 'Supporting document catalogue', 'mms-membership' ); ?></h2>
 				<p><?php esc_html_e( 'Documents listed here appear as options in the required/optional document columns above after you save.', 'mms-membership' ); ?></p>
 
@@ -449,7 +490,54 @@ class MMS_Settings {
 				<p class="mms-table-actions"><button type="button" class="button mms-add-row" data-mms-add="mms-docs-table" data-mms-template="mms-docs-template"><?php esc_html_e( '+ Add document type', 'mms-membership' ); ?></button></p>
 			</div>
 
-			<div class="mms-form-card">
+			<div class="mms-form-card mms-tab-panel" id="mms-panel-emails" role="tabpanel" aria-labelledby="mms-tab-emails">
+				<h2><?php esc_html_e( 'Email notifications', 'mms-membership' ); ?></h2>
+				<p><?php esc_html_e( 'Customise the wording of transactional emails. The branded layout, application details and action buttons are added automatically. Leave a field blank to use the default wording.', 'mms-membership' ); ?></p>
+
+				<?php foreach ( $email_tpls as $email_key => $email_tpl ) : ?>
+					<div class="mms-email-template">
+						<h3><?php echo esc_html( MMS_Emails::template_keys()[ $email_key ] ); ?></h3>
+
+						<div class="mms-form-field">
+							<label for="mms-email-<?php echo esc_attr( $email_key ); ?>-subject"><?php esc_html_e( 'Subject', 'mms-membership' ); ?></label>
+							<input type="text" id="mms-email-<?php echo esc_attr( $email_key ); ?>-subject" name="emails[<?php echo esc_attr( $email_key ); ?>][subject]" value="<?php echo esc_attr( $email_tpl['subject'] ); ?>" class="large-text" />
+						</div>
+
+						<div class="mms-form-field mms-email-body">
+							<label><?php esc_html_e( 'Message', 'mms-membership' ); ?></label>
+							<?php
+							wp_editor(
+								$email_tpl['body'],
+								'mms-email-' . $email_key . '-body',
+								array(
+									'textarea_name' => 'emails[' . $email_key . '][body]',
+									'textarea_rows' => 8,
+									'media_buttons' => false,
+									'tinymce'       => array(
+										'toolbar1' => 'formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo',
+										'toolbar2' => '',
+									),
+								)
+							);
+							?>
+						</div>
+
+						<p class="mms-form-hint">
+							<?php esc_html_e( 'Placeholders:', 'mms-membership' ); ?>
+							<?php
+							$email_placeholders = MMS_Emails::placeholders( $email_key );
+							$email_tags         = array();
+							foreach ( $email_placeholders as $tag => $label ) {
+								$email_tags[] = '<code>' . esc_html( $tag ) . '</code> ' . esc_html( $label );
+							}
+							echo implode( ' &middot; ', $email_tags ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
+							?>
+						</p>
+					</div>
+				<?php endforeach; ?>
+			</div>
+
+			<div class="mms-form-card mms-tab-panel" id="mms-panel-branding" role="tabpanel" aria-labelledby="mms-tab-branding">
 				<h2><?php esc_html_e( 'Invoice & receipt branding', 'mms-membership' ); ?></h2>
 				<p><?php esc_html_e( 'The logo appears at the top of membership invoices and receipts. If no logo is uploaded, the bundled MACM logo is used.', 'mms-membership' ); ?></p>
 
@@ -475,13 +563,14 @@ class MMS_Settings {
 				</div>
 			</div>
 
-			<div class="mms-form-card">
+			<div class="mms-form-card mms-tab-panel" id="mms-panel-payments" role="tabpanel" aria-labelledby="mms-tab-payments">
 				<h2><?php esc_html_e( 'Online payments (ToyyibPay)', 'mms-membership' ); ?></h2>
 				<p><?php esc_html_e( 'Bills are created when a member clicks “Pay now” in the portal. Use sandbox credentials while testing; the callback URL only works on a publicly reachable site, so local tests rely on the return URL verification.', 'mms-membership' ); ?></p>
 
 				<table class="form-table mms-payment-form" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Online payment', 'mms-membership' ); ?></th>
+
 						<td>
 							<label>
 								<input type="checkbox" name="payment_enabled" value="1" <?php checked( ! empty( $payment['enabled'] ) ); ?> />
@@ -512,11 +601,12 @@ class MMS_Settings {
 						</td>
 					</tr>
 				</table>
+			</div>
 
-				<div class="mms-form-actions">
-					<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Save settings', 'mms-membership' ); ?></button>
-					<a class="mms-btn mms-btn-outline" href="<?php echo esc_url( admin_url( 'admin.php?page=mms-membership' ) ); ?>"><?php esc_html_e( 'Cancel', 'mms-membership' ); ?></a>
-				</div>
+			<div class="mms-form-actions mms-settings-actions">
+				<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Save settings', 'mms-membership' ); ?></button>
+				<a class="mms-btn mms-btn-outline" href="<?php echo esc_url( admin_url( 'admin.php?page=mms-membership' ) ); ?>"><?php esc_html_e( 'Cancel', 'mms-membership' ); ?></a>
+				<span class="mms-form-hint"><?php esc_html_e( 'Settings in every tab are saved together.', 'mms-membership' ); ?></span>
 			</div>
 			</form>
 

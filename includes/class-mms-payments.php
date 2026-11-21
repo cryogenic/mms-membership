@@ -1117,20 +1117,21 @@ class MMS_Payments {
 				. '<td style="padding:8px 12px;border-bottom:1px solid #e5e5e5;font-weight:600;">' . esc_html( $value ) . '</td></tr>';
 		}
 
+		$context = array(
+			'name'            => isset( $meta['pic_name'] ) ? $meta['pic_name'] : '',
+			'company_name'    => isset( $meta['company_name'] ) ? $meta['company_name'] : '',
+			'reference'       => $ref,
+			'membership_type' => $type ? $type['label'] : $application['membership_type'],
+			'amount'          => self::format_amount( $payment['amount'], $currency ),
+			'invoice_no'      => $payment['invoice_no'],
+			'membership_no'   => $number,
+			'start_date'      => $start->format( 'j F Y' ),
+			'expiry_date'     => $expires->format( 'j F Y' ),
+		);
+
 		$body = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#1d2327;">'
 			. '<h2 style="color:#0f4c5c;">' . esc_html( $is_renewal ? __( 'Membership renewed', 'mms-membership' ) : __( 'Payment received', 'mms-membership' ) ) . '</h2>'
-			. '<p>' . ( $is_renewal
-				? sprintf(
-					/* translators: 1: company name, 2: expiry date */
-					esc_html__( 'Thank you. Your renewal payment for %1$s has been received. Your membership is now valid until %2$s.', 'mms-membership' ),
-					esc_html( isset( $meta['company_name'] ) ? $meta['company_name'] : '' ),
-					esc_html( $expires->format( 'j F Y' ) )
-				)
-				: sprintf(
-					/* translators: %s: company name */
-					esc_html__( 'Thank you. Your payment for %s has been received and your membership is now active.', 'mms-membership' ),
-					esc_html( isset( $meta['company_name'] ) ? $meta['company_name'] : '' )
-				) ) . '</p>'
+			. '<div style="margin:0 0 16px;font-size:15px;line-height:1.55;">' . MMS_Emails::body( 'payment', $context ) . '</div>'
 			. '<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">' . $table . '</table>'
 			. '<p style="font-size:13px;color:#646970;">' . sprintf(
 				/* translators: %s: application reference */
@@ -1174,17 +1175,7 @@ class MMS_Payments {
 			}
 		}
 
-		$subject = $is_renewal
-			? sprintf(
-				/* translators: %s: membership number */
-				__( 'Membership renewed — %s', 'mms-membership' ),
-				$number
-			)
-			: sprintf(
-				/* translators: %s: membership number */
-				__( 'Payment received — membership %s', 'mms-membership' ),
-				$number
-			);
+		$subject = MMS_Emails::subject( 'payment', $context );
 
 		$sent = wp_mail(
 			$email,

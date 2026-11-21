@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.1
+- Settings screen sections are grouped into tabs with a single Save action, instead of one long page.
+
+## 0.13.0
+- Customisable approval and payment email templates (subject and WYSIWYG body) in Settings → Email notifications, with placeholders.
+- Keep the branded layout, application details and action buttons under plugin control; blank fields fall back to the default wording.
+- Sanitise custom HTML with `wp_kses_post` and escape all placeholder values.
+
 ## 0.12.1
 - Release notes in the Plugins update screen are now generated from this changelog.
 - Release workflow can update an existing GitHub release instead of failing on re-runs.

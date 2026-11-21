@@ -3,7 +3,7 @@
  * Plugin Name:       MMS Membership
  * Plugin URI:        https://macm.my
  * Description:       MACM membership registration and management module (MMS): member applications, document review, approval, payments and member portal.
- * Version:           0.12.1
+ * Version:           0.13.1
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            JWorks Enterprise
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MMS_MEMBERSHIP_VERSION', '0.12.1' );
+define( 'MMS_MEMBERSHIP_VERSION', '0.13.1' );
 define( 'MMS_DB_VERSION', '0.11.0' );
 define( 'MMS_MEMBERSHIP_FILE', __FILE__ );
 define( 'MMS_MEMBERSHIP_DIR', plugin_dir_path( __FILE__ ) );
@@ -38,6 +38,7 @@ require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-payments.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-certificate.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-billing.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-renewals.php';
+require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-emails.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-install.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-updater.php';
 require_once MMS_MEMBERSHIP_DIR . 'includes/class-mms-plugin.php';
