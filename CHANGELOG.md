@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.23.0
+## 1.0.0
 - One login, many companies: a member account can now hold several company memberships. `member_user_id` is the source of truth; the legacy `mms_application_id` user meta stays as the default company.
 - Member portal: company switcher (name + status chips), `?mms_company={application_id}` selection validated against ownership and remembered in `_mms_active_application`; every portal action (profile, password, certificate, invoice, receipt, payment, renewal) is scoped to the selected company.
 - Admin company file: show all companies on an account, link/unlink an existing account (search by email, username or user ID), and warn when resetting a password shared across companies.
