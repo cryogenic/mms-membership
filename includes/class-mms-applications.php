@@ -362,18 +362,69 @@ class MMS_Applications {
 	}
 
 	/**
+	 * Applications linked to a member account, newest first.
+	 *
+	 * @param int   $user_id User ID.
+	 * @param array $args {
+	 *     Optional. Query arguments.
+	 *
+	 *     @type array<int,string> $statuses Only return these statuses.
+	 *     @type int               $limit    Maximum rows (0 = no limit).
+	 *     @type int               $offset   Rows to skip.
+	 * }
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function for_member( $user_id, $args = array() ) {
+		global $wpdb;
+
+		$user_id = (int) $user_id;
+		if ( ! $user_id ) {
+			return array();
+		}
+
+		$args = wp_parse_args(
+			$args,
+			array(
+				'statuses' => array(),
+				'limit'    => 0,
+				'offset'   => 0,
+			)
+		);
+
+		$table  = MMS_DB::table( MMS_DB::APPLICATION );
+		$sql    = "SELECT * FROM {$table} WHERE member_user_id = %d";
+		$params = array( $user_id );
+
+		$statuses = array_filter( array_map( 'sanitize_key', (array) $args['statuses'] ) );
+		if ( $statuses ) {
+			$sql     .= ' AND status IN (' . implode( ',', array_fill( 0, count( $statuses ), '%s' ) ) . ')';
+			$params   = array_merge( $params, array_values( $statuses ) );
+		}
+
+		$sql .= ' ORDER BY id DESC';
+
+		$limit = max( 0, (int) $args['limit'] );
+		if ( $limit ) {
+			$sql     .= ' LIMIT %d OFFSET %d';
+			$params[] = $limit;
+			$params[] = max( 0, (int) $args['offset'] );
+		}
+
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	/**
 	 * Latest application linked to a member account.
 	 *
 	 * @param int $user_id User ID.
 	 * @return array<string,mixed>|null
 	 */
 	public static function get_by_member( $user_id ) {
-		global $wpdb;
+		$rows = self::for_member( $user_id, array( 'limit' => 1 ) );
 
-		$table = MMS_DB::table( MMS_DB::APPLICATION );
-		$row   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE member_user_id = %d ORDER BY id DESC LIMIT 1", (int) $user_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		return $row ? $row : null;
+		return $rows ? $rows[0] : null;
 	}
 
 	/**

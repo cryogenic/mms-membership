@@ -28,6 +28,8 @@
  * @var array       $mms_pay_statuses     Payment status labels.
  * @var string      $mms_pay_state        Payment return state code.
  * @var string      $mms_pay_error        Payment error message.
+ * @var array       $mms_company_list     Selectable companies.
+ * @var string      $mms_company_error    Invalid company selection message.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -191,6 +193,27 @@ $mms_registration_url = isset( $mms_registration_url ) ? $mms_registration_url :
 			</div>
 		</header>
 
+		<?php if ( count( $mms_company_list ) > 1 ) : ?>
+			<nav class="mms-portal-companies" aria-label="<?php esc_attr_e( 'Your companies', 'mms-membership' ); ?>">
+				<span class="mms-portal-companies-label"><?php esc_html_e( 'Companies', 'mms-membership' ); ?></span>
+				<div class="mms-portal-company-list">
+					<?php foreach ( $mms_company_list as $mms_company ) : ?>
+						<?php if ( $mms_company['active'] ) : ?>
+							<span class="mms-portal-company is-active" aria-current="true">
+								<strong><?php echo esc_html( $mms_company['label'] ); ?></strong>
+								<span class="mms-portal-company-status is-<?php echo esc_attr( $mms_company['status'] ); ?>"><?php echo esc_html( $mms_company['status_label'] ); ?></span>
+							</span>
+						<?php else : ?>
+							<a class="mms-portal-company" href="<?php echo esc_url( add_query_arg( 'mms_company', (int) $mms_company['id'], $mms_portal_url ) ); ?>">
+								<strong><?php echo esc_html( $mms_company['label'] ); ?></strong>
+								<span class="mms-portal-company-status is-<?php echo esc_attr( $mms_company['status'] ); ?>"><?php echo esc_html( $mms_company['status_label'] ); ?></span>
+							</a>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</div>
+			</nav>
+		<?php endif; ?>
+
 		<section class="mms-portal-hero">
 			<div class="mms-portal-hero-main">
 				<span class="mms-portal-eyebrow"><?php esc_html_e( 'MACM Membership', 'mms-membership' ); ?></span>
@@ -226,6 +249,12 @@ $mms_registration_url = isset( $mms_registration_url ) ? $mms_registration_url :
 				<strong><?php echo esc_html( $mms_fee ); ?></strong>
 			</div>
 		</div>
+
+		<?php if ( '' !== $mms_company_error ) : ?>
+			<div class="mms-notice mms-notice-error" role="alert">
+				<p><?php echo esc_html( $mms_company_error ); ?></p>
+			</div>
+		<?php endif; ?>
 
 		<?php if ( isset( $mms_messages[ $mms_msg ] ) ) : ?>
 			<div class="mms-notice <?php echo 'locked' === $mms_msg ? 'mms-notice-error' : 'mms-notice-success'; ?>" role="status">
@@ -270,6 +299,7 @@ $mms_registration_url = isset( $mms_registration_url ) ? $mms_registration_url :
 			?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="mms-payment-form mms-portal-actions">
 				<input type="hidden" name="action" value="<?php echo esc_attr( MMS_Payments::ACTION_START ); ?>" />
+				<input type="hidden" name="company_id" value="<?php echo esc_attr( (int) $mms_app['id'] ); ?>" />
 				<?php wp_nonce_field( MMS_Payments::NONCE_START . '_' . (int) $mms_app['id'] ); ?>
 				<button type="submit" class="mms-button"><?php echo esc_html( $label ); ?></button>
 			</form>
@@ -467,6 +497,7 @@ $mms_registration_url = isset( $mms_registration_url ) ? $mms_registration_url :
 						<p class="mms-muted"><?php esc_html_e( 'Company name, registration number, address and Person In Charge identity can only be changed by MACM. Use this form for contact details.', 'mms-membership' ); ?></p>
 						<form class="mms-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="<?php echo esc_attr( MMS_Portal::PROFILE_ACTION ); ?>" />
+							<input type="hidden" name="company_id" value="<?php echo esc_attr( (int) $mms_app['id'] ); ?>" />
 							<?php wp_nonce_field( MMS_Portal::PROFILE_NONCE . '_' . (int) $mms_user->ID ); ?>
 							<div class="mms-field-grid">
 								<div class="mms-field">
@@ -496,6 +527,7 @@ $mms_registration_url = isset( $mms_registration_url ) ? $mms_registration_url :
 						<h3><?php esc_html_e( 'Change password', 'mms-membership' ); ?></h3>
 						<form class="mms-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="<?php echo esc_attr( MMS_Portal::PASSWORD_ACTION ); ?>" />
+							<input type="hidden" name="company_id" value="<?php echo esc_attr( (int) $mms_app['id'] ); ?>" />
 							<?php wp_nonce_field( MMS_Portal::PASSWORD_NONCE . '_' . (int) $mms_user->ID ); ?>
 							<div class="mms-field-grid">
 								<div class="mms-field mms-field-wide">

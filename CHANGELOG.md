@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0
+- One login, many companies: a member account can now hold several company memberships. `member_user_id` is the source of truth; the legacy `mms_application_id` user meta stays as the default company.
+- Member portal: company switcher (name + status chips), `?mms_company={application_id}` selection validated against ownership and remembered in `_mms_active_application`; every portal action (profile, password, certificate, invoice, receipt, payment, renewal) is scoped to the selected company.
+- Admin company file: show all companies on an account, link/unlink an existing account (search by email, username or user ID), and warn when resetting a password shared across companies.
+- Add company: account option None / Create new account / Attach to existing account; a PIC email that already has an account is attached automatically instead of being reported as an error.
+- Existing accounts never receive new credentials: approvals and manual creation link the account, log `member_account_linked`, and email a new customisable template "Existing account — new company added" (company, reference, membership number, status, portal button). The approval email switches to "log in with your usual username and password" without a set-password link.
+- Set-password links are only issued for newly created accounts.
+- Project tooling: `.tools/backfill-member-links.php` links legacy `member_user_id = 0` applications from the `mms_application_id` user meta (dry-run supported).
+- Security: ownership checks (`user_owns_application` / `resolve_application`) protect portal, certificate, invoice/receipt and payment endpoints against IDOR; regression and IDOR tests pass for single- and multi-company accounts.
+
 ## 0.22.2
 - Allow more than one draft application: drafts now store `reference` as NULL (the UNIQUE index permits many NULLs) and receive the `MMS-YYYY-NNNN` reference when submitted. Adds an upgrade step that makes the `reference` column nullable and normalises existing empty values (DB version 0.12.0).
 - Treat a missing reference as empty in every fallback label (`#id` / `APP-id`) across admin, payments, portal and resume pages.

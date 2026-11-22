@@ -115,14 +115,21 @@ class MMS_Payments {
 			exit;
 		}
 
-		$user        = wp_get_current_user();
-		$application = MMS_Members::application_for_user( $user->ID );
+		$user           = wp_get_current_user();
+		$application_id = isset( $_POST['company_id'] ) ? absint( wp_unslash( $_POST['company_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$application    = MMS_Members::resolve_application( $user->ID, $application_id );
+
+		if ( is_wp_error( $application ) ) {
+			self::redirect_portal( 'error', $application->get_error_message() );
+		}
 
 		if ( ! $application ) {
 			self::redirect_portal( 'error', __( 'No membership application is linked to this account.', 'mms-membership' ) );
 		}
 
 		check_admin_referer( self::NONCE_START . '_' . (int) $application['id'] );
+
+		MMS_Members::set_active_application( $user->ID, (int) $application['id'] );
 
 		$kind = self::kind_for( $application );
 		if ( '' === $kind ) {
@@ -419,13 +426,20 @@ class MMS_Payments {
 			return;
 		}
 
-		$user        = wp_get_current_user();
-		$application = MMS_Members::application_for_user( $user->ID );
-		$payment     = self::find_by_bill( $bill );
+		$user    = wp_get_current_user();
+		$payment = self::find_by_bill( $bill );
 
-		if ( ! $application || ! $payment || (int) $payment['application_id'] !== (int) $application['id'] ) {
+		if ( ! $payment ) {
 			self::redirect_portal( 'error', __( 'That payment does not belong to your membership account.', 'mms-membership' ) );
 		}
+
+		$application = MMS_Applications::get( $payment['application_id'] );
+
+		if ( ! $application || ! MMS_Members::user_owns_application( $user->ID, $application ) ) {
+			self::redirect_portal( 'error', __( 'That payment does not belong to your membership account.', 'mms-membership' ) );
+		}
+
+		MMS_Members::set_active_application( $user->ID, (int) $application['id'] );
 
 		if ( 'paid' === $payment['status'] ) {
 			self::redirect_portal( 'paid', '' );
@@ -1212,22 +1226,20 @@ class MMS_Payments {
 	 * @return void
 	 */
 	private static function redirect_portal( $code, $message ) {
+		$args = array( 'mms_payment' => $code );
+
 		if ( '' !== $message ) {
-			$key = wp_generate_password( 12, false, false );
+			$key                              = wp_generate_password( 12, false, false );
+			$args['mms_error']                = $key;
 			set_transient( 'mms_payment_err_' . $key, $message, HOUR_IN_SECONDS );
-			wp_safe_redirect(
-				add_query_arg(
-					array(
-						'mms_payment' => $code,
-						'mms_error'   => $key,
-					),
-					MMS_Members::portal_url()
-				)
-			);
-			exit;
 		}
 
-		wp_safe_redirect( add_query_arg( 'mms_payment', $code, MMS_Members::portal_url() ) );
+		$company_id = MMS_Members::active_application_id( get_current_user_id() );
+		if ( $company_id ) {
+			$args['mms_company'] = $company_id;
+		}
+
+		wp_safe_redirect( add_query_arg( $args, MMS_Members::portal_url() ) );
 		exit;
 	}
 

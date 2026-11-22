@@ -149,11 +149,6 @@ class MMS_Billing {
 				auth_redirect();
 			}
 			check_admin_referer( $nonce );
-
-			$application = MMS_Members::application_for_user( get_current_user_id() );
-			if ( ! $application ) {
-				wp_die( esc_html__( 'You are not allowed to download this document.', 'mms-membership' ), '', array( 'response' => 403 ) );
-			}
 		}
 
 		$payment = MMS_Payments::get( $payment_id );
@@ -162,8 +157,12 @@ class MMS_Billing {
 			wp_die( esc_html__( 'Payment not found.', 'mms-membership' ), '', array( 'response' => 404 ) );
 		}
 
-		if ( ! $admin && (int) $application['id'] !== (int) $payment['application_id'] ) {
-			wp_die( esc_html__( 'You are not allowed to download this document.', 'mms-membership' ), '', array( 'response' => 403 ) );
+		if ( ! $admin ) {
+			$owned = MMS_Applications::get( $payment['application_id'] );
+
+			if ( ! $owned || ! MMS_Members::user_owns_application( get_current_user_id(), $owned ) ) {
+				wp_die( esc_html__( 'You are not allowed to download this document.', 'mms-membership' ), '', array( 'response' => 403 ) );
+			}
 		}
 
 		if ( 'receipt' === $type && 'paid' !== $payment['status'] ) {

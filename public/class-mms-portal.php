@@ -72,10 +72,42 @@ class MMS_Portal {
 		$mms_pay_state  = isset( $_GET['mms_payment'] ) ? sanitize_key( wp_unslash( $_GET['mms_payment'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$mms_pay_error  = '';
 		$mms_app        = null;
+		$mms_companies  = array();
+		$mms_company_error = '';
 
 		if ( $mms_logged_in ) {
-			$user    = wp_get_current_user();
-			$mms_app = MMS_Members::application_for_user( $user->ID );
+			$user          = wp_get_current_user();
+			$mms_companies = $this->visible_companies( $user->ID );
+
+			$mms_company_id = isset( $_GET['mms_company'] ) ? absint( wp_unslash( $_GET['mms_company'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+			if ( $mms_company_id ) {
+				$selected = MMS_Members::resolve_application( $user->ID, $mms_company_id );
+
+				if ( is_wp_error( $selected ) ) {
+					$mms_company_error = $selected->get_error_message();
+				} elseif ( ! $this->is_visible( $selected ) ) {
+					$mms_company_error = __( 'That company is not available from this account.', 'mms-membership' );
+				} else {
+					$mms_app = $selected;
+					MMS_Members::set_active_application( $user->ID, (int) $selected['id'] );
+				}
+			}
+
+			if ( ! $mms_app && ! empty( $mms_companies ) ) {
+				$active_id = MMS_Members::active_application_id( $user->ID );
+
+				foreach ( $mms_companies as $company ) {
+					if ( $active_id && (int) $company['id'] === $active_id ) {
+						$mms_app = $company;
+						break;
+					}
+				}
+
+				if ( ! $mms_app ) {
+					$mms_app = $mms_companies[0];
+				}
+			}
 		}
 
 		$mms_editable = $mms_app && in_array( $mms_app['status'], array( MMS_Status::ACTIVE, MMS_Status::EXPIRED ), true );
@@ -114,8 +146,26 @@ class MMS_Portal {
 
 		if ( $mms_app && ! empty( $mms_app['membership_no'] ) && in_array( $mms_status, array( MMS_Status::ACTIVE, MMS_Status::EXPIRED ), true ) ) {
 			$mms_certificate_url = wp_nonce_url(
-				add_query_arg( 'action', MMS_Certificate::ACTION, admin_url( 'admin-post.php' ) ),
+				add_query_arg(
+					array(
+						'action'         => MMS_Certificate::ACTION,
+						'application_id' => (int) $mms_app['id'],
+					),
+					admin_url( 'admin-post.php' )
+				),
 				MMS_Certificate::NONCE . '_' . (int) $mms_app['id']
+			);
+		}
+
+		$mms_company_list = array();
+
+		foreach ( $mms_companies as $company ) {
+			$mms_company_list[] = array(
+				'id'           => (int) $company['id'],
+				'label'        => self::company_label( $company ),
+				'status'       => $company['status'],
+				'status_label' => MMS_Status::label( $company['status'] ),
+				'active'       => ( $mms_app && (int) $mms_app['id'] === (int) $company['id'] ),
 			);
 		}
 
@@ -142,7 +192,7 @@ class MMS_Portal {
 
 		check_admin_referer( self::PROFILE_NONCE . '_' . $user->ID );
 
-		$application = $this->require_editable( $user );
+		$application = $this->require_editable( $user, isset( $_POST['company_id'] ) ? absint( wp_unslash( $_POST['company_id'] ) ) : 0 );
 
 		$old  = MMS_Applications::get_meta( $application['id'] );
 		$data = $old;
@@ -197,7 +247,15 @@ class MMS_Portal {
 			$user->ID
 		);
 
-		wp_safe_redirect( add_query_arg( 'mms_msg', 'profile_saved', MMS_Members::portal_url() ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'mms_msg'     => 'profile_saved',
+					'mms_company' => (int) $application['id'],
+				),
+				MMS_Members::portal_url()
+			)
+		);
 		exit;
 	}
 
@@ -211,7 +269,7 @@ class MMS_Portal {
 
 		check_admin_referer( self::PASSWORD_NONCE . '_' . $user->ID );
 
-		$application = $this->require_editable( $user );
+		$application = $this->require_editable( $user, isset( $_POST['company_id'] ) ? absint( wp_unslash( $_POST['company_id'] ) ) : 0 );
 
 		$current = isset( $_POST['current_password'] ) ? (string) wp_unslash( $_POST['current_password'] ) : '';
 		$new     = isset( $_POST['new_password'] ) ? (string) wp_unslash( $_POST['new_password'] ) : '';
@@ -247,7 +305,15 @@ class MMS_Portal {
 			$user->ID
 		);
 
-		wp_safe_redirect( add_query_arg( 'mms_msg', 'password_saved', MMS_Members::portal_url() ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'mms_msg'     => 'password_saved',
+					'mms_company' => (int) $application['id'],
+				),
+				MMS_Members::portal_url()
+			)
+		);
 		exit;
 	}
 
@@ -266,13 +332,18 @@ class MMS_Portal {
 	}
 
 	/**
-	 * Ensure the member has an application they are allowed to edit.
+	 * Ensure the selected company belongs to the member and can be edited.
 	 *
-	 * @param WP_User $user Current user.
+	 * @param WP_User $user           Current user.
+	 * @param int     $application_id Selected company (0 = remembered/default).
 	 * @return array<string,mixed>
 	 */
-	private function require_editable( $user ) {
-		$application = MMS_Members::application_for_user( $user->ID );
+	private function require_editable( $user, $application_id = 0 ) {
+		$application = MMS_Members::resolve_application( $user->ID, $application_id );
+
+		if ( is_wp_error( $application ) ) {
+			wp_die( esc_html( $application->get_error_message() ), '', array( 'response' => 403 ) );
+		}
 
 		if ( ! $application ) {
 			wp_safe_redirect( add_query_arg( 'mms_msg', 'no_account', MMS_Members::portal_url() ) );
@@ -280,11 +351,67 @@ class MMS_Portal {
 		}
 
 		if ( ! in_array( $application['status'], array( MMS_Status::ACTIVE, MMS_Status::EXPIRED ), true ) ) {
-			wp_safe_redirect( add_query_arg( 'mms_msg', 'locked', MMS_Members::portal_url() ) );
+			$url = add_query_arg(
+				array(
+					'mms_msg'     => 'locked',
+					'mms_company' => (int) $application['id'],
+				),
+				MMS_Members::portal_url()
+			);
+			wp_safe_redirect( $url );
 			exit;
 		}
 
+		MMS_Members::set_active_application( $user->ID, (int) $application['id'] );
+
 		return $application;
+	}
+
+	/**
+	 * Companies that may be shown in the portal (draft and rejected are hidden).
+	 *
+	 * @param int $user_id User ID.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function visible_companies( $user_id ) {
+		$companies = array();
+
+		foreach ( MMS_Members::applications_for_user( $user_id ) as $company ) {
+			if ( $this->is_visible( $company ) ) {
+				$companies[] = $company;
+			}
+		}
+
+		return $companies;
+	}
+
+	/**
+	 * Whether an application is visible in the portal.
+	 *
+	 * @param array $application Application row.
+	 * @return bool
+	 */
+	private function is_visible( $application ) {
+		return ! in_array( $application['status'], array( MMS_Status::DRAFT, MMS_Status::REJECTED ), true );
+	}
+
+	/**
+	 * Human readable company label for the selector.
+	 *
+	 * @param array $application Application row.
+	 * @return string
+	 */
+	private static function company_label( $application ) {
+		$meta = MMS_Applications::get_meta( (int) $application['id'] );
+		$name = isset( $meta['company_name'] ) ? trim( (string) $meta['company_name'] ) : '';
+
+		if ( '' !== $name ) {
+			return $name;
+		}
+
+		$reference = isset( $application['reference'] ) ? (string) $application['reference'] : '';
+
+		return '' !== $reference ? $reference : '#' . (int) $application['id'];
 	}
 
 	/**

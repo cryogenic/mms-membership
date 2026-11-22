@@ -134,7 +134,11 @@ class MMS_Admin_Company {
 			$current_status = MMS_Status::ACTIVE;
 		}
 
-		$account_checked  = '1' === $value( 'create_account', '1' );
+		$account_mode = $value( 'account_mode', '' );
+		if ( ! in_array( $account_mode, array( 'none', 'create', 'attach' ), true ) ) {
+			$account_mode = '1' === $value( 'create_account', '1' ) ? 'create' : 'none';
+		}
+		$attach_account   = $value( 'attach_account', '' );
 		$account_username = $value( 'account_username', '' );
 		if ( '' === $account_username && '' !== $value( 'pic_email' ) ) {
 			$account_username = MMS_Members::suggest_login( $value( 'pic_email' ) );
@@ -285,14 +289,17 @@ class MMS_Admin_Company {
 
 				<div class="mms-form-card">
 					<h2><?php esc_html_e( 'Member account', 'mms-membership' ); ?></h2>
-					<p><?php esc_html_e( 'The username and temporary password are emailed to the Person In Charge, who can change the password after logging in. The account is created when the status is Approved or Active.', 'mms-membership' ); ?></p>
+					<p><?php esc_html_e( 'Choose whether this company gets a new login, reuses an existing login, or has no portal access yet. New accounts are created when the status is Approved or Active.', 'mms-membership' ); ?></p>
 
-					<p style="margin:0 0 16px;">
-						<label class="mms-check">
-							<input type="checkbox" id="mms-create-account" name="create_account" value="1" <?php checked( $account_checked ); ?> />
-							<span><?php esc_html_e( 'Create a member account for the Person In Charge.', 'mms-membership' ); ?></span>
-						</label>
-					</p>
+					<div class="mms-form-field">
+						<label for="mms-account-mode"><?php esc_html_e( 'Account option', 'mms-membership' ); ?></label>
+						<select id="mms-account-mode" name="account_mode">
+							<option value="none" <?php selected( $account_mode, 'none' ); ?>><?php esc_html_e( 'Do not create or link an account', 'mms-membership' ); ?></option>
+							<option value="create" <?php selected( $account_mode, 'create' ); ?>><?php esc_html_e( 'Create a new account for the Person In Charge', 'mms-membership' ); ?></option>
+							<option value="attach" <?php selected( $account_mode, 'attach' ); ?>><?php esc_html_e( 'Attach to an existing account', 'mms-membership' ); ?></option>
+						</select>
+						<span class="mms-form-hint"><?php esc_html_e( 'Attach when the member already signs in for another company. The account keeps its current username, email and password.', 'mms-membership' ); ?></span>
+					</div>
 
 					<div class="mms-form-grid mms-account-fields">
 						<div class="mms-form-field">
@@ -307,6 +314,14 @@ class MMS_Admin_Company {
 								<button type="button" class="mms-btn mms-btn-outline" id="mms-generate-password"><?php esc_html_e( 'Generate', 'mms-membership' ); ?></button>
 							</div>
 							<span class="mms-form-hint"><?php esc_html_e( 'Randomly generated. The member can change it in the portal after signing in.', 'mms-membership' ); ?></span>
+						</div>
+					</div>
+
+					<div class="mms-form-grid mms-attach-fields">
+						<div class="mms-form-field">
+							<label for="mms-attach-account"><?php esc_html_e( 'Existing account email, username or user ID', 'mms-membership' ); ?></label>
+							<input type="text" id="mms-attach-account" name="attach_account" value="<?php echo esc_attr( $attach_account ); ?>" autocomplete="off" spellcheck="false" maxlength="100" />
+							<span class="mms-form-hint"><?php esc_html_e( 'No new login or password is sent. The company will appear in that account’s portal straight away.', 'mms-membership' ); ?></span>
 						</div>
 					</div>
 				</div>
@@ -338,7 +353,11 @@ class MMS_Admin_Company {
 		$started   = isset( $_POST['started_at'] ) ? sanitize_text_field( wp_unslash( $_POST['started_at'] ) ) : '';
 		$amount    = isset( $_POST['amount'] ) ? sanitize_text_field( wp_unslash( $_POST['amount'] ) ) : '';
 		$pay_ref   = isset( $_POST['payment_ref'] ) ? sanitize_text_field( wp_unslash( $_POST['payment_ref'] ) ) : '';
-		$account   = isset( $_POST['create_account'] ) && '1' === $_POST['create_account'];
+		$account_mode = isset( $_POST['account_mode'] ) ? sanitize_key( wp_unslash( $_POST['account_mode'] ) ) : '';
+		if ( ! in_array( $account_mode, array( 'none', 'create', 'attach' ), true ) ) {
+			$account_mode = ( isset( $_POST['create_account'] ) && '1' === $_POST['create_account'] ) ? 'create' : 'none';
+		}
+		$attach_account   = isset( $_POST['attach_account'] ) ? sanitize_text_field( wp_unslash( $_POST['attach_account'] ) ) : '';
 		$account_username = isset( $_POST['account_username'] ) ? sanitize_text_field( wp_unslash( $_POST['account_username'] ) ) : '';
 		$account_password = isset( $_POST['account_password'] ) ? sanitize_text_field( wp_unslash( $_POST['account_password'] ) ) : '';
 
@@ -386,36 +405,54 @@ class MMS_Admin_Company {
 			$errors[] = __( 'Choose a valid status.', 'mms-membership' );
 		}
 
-		$will_create  = $account && in_array( $status, array( MMS_Status::ACTIVE, MMS_Status::APPROVED_UNPAID ), true );
 		$account_login = '';
+		$attach_user   = null;
+		$will_create   = false;
 
-		if ( $will_create ) {
-			$account_login = MMS_Members::normalize_login( $account_username );
+		if ( 'create' === $account_mode ) {
+			if ( ! in_array( $status, array( MMS_Status::ACTIVE, MMS_Status::APPROVED_UNPAID ), true ) ) {
+				$errors[] = __( 'A member account can only be created when the status is Approved or Active.', 'mms-membership' );
+			} else {
+				$existing_account = '' !== $meta['pic_email'] ? get_user_by( 'email', $meta['pic_email'] ) : false;
 
-			if ( '' === $account_login ) {
-				$account_login = MMS_Members::suggest_login( $meta['pic_email'] );
+				if ( $existing_account instanceof WP_User ) {
+					if ( user_can( $existing_account, 'mms_review_application' ) ) {
+						$errors[] = __( 'The Person In Charge email belongs to a staff account. Use a different email or attach another member account.', 'mms-membership' );
+					} else {
+						// Reuse the existing login instead of failing when the email is already registered.
+						$attach_user = $existing_account;
+					}
+				} else {
+					$will_create   = true;
+					$account_login = MMS_Members::normalize_login( $account_username );
+
+					if ( '' === $account_login ) {
+						$account_login = MMS_Members::suggest_login( $meta['pic_email'] );
+					}
+
+					if ( '' === $account_login ) {
+						$errors[] = __( 'Enter a username for the member account.', 'mms-membership' );
+					} elseif ( strlen( trim( $account_username ) ) > 60 ) {
+						$errors[] = __( 'The username must be 60 characters or fewer.', 'mms-membership' );
+					} elseif ( username_exists( $account_login ) ) {
+						/* translators: %s: username */
+						$errors[] = sprintf( __( 'The username “%s” is already taken. Choose another one.', 'mms-membership' ), $account_login );
+					}
+
+					if ( strlen( $account_password ) < 8 ) {
+						$errors[] = __( 'The temporary password must be at least 8 characters long.', 'mms-membership' );
+					}
+				}
 			}
+		} elseif ( 'attach' === $account_mode ) {
+			$attach_user = self::find_account( $attach_account );
 
-			if ( '' === $account_login ) {
-				$errors[] = __( 'Enter a username for the member account.', 'mms-membership' );
-			} elseif ( strlen( trim( $account_username ) ) > 60 ) {
-				$errors[] = __( 'The username must be 60 characters or fewer.', 'mms-membership' );
-			} elseif ( username_exists( $account_login ) ) {
-				/* translators: %s: username */
-				$errors[] = sprintf( __( 'The username “%s” is already taken. Choose another one.', 'mms-membership' ), $account_login );
-			}
-
-			$existing_account = get_user_by( 'email', $meta['pic_email'] );
-			if ( $existing_account instanceof WP_User ) {
-				$errors[] = sprintf(
-					/* translators: %s: existing username */
-					__( 'A member account already exists for this email address (username: %s). Uncheck “Create a member account” or use another email.', 'mms-membership' ),
-					$existing_account->user_login
-				);
-			}
-
-			if ( strlen( $account_password ) < 8 ) {
-				$errors[] = __( 'The temporary password must be at least 8 characters long.', 'mms-membership' );
+			if ( '' === trim( $attach_account ) ) {
+				$errors[] = __( 'Enter the email, username or user ID of the account to attach.', 'mms-membership' );
+			} elseif ( ! $attach_user ) {
+				$errors[] = __( 'No account matches that email, username or user ID.', 'mms-membership' );
+			} elseif ( user_can( $attach_user, 'mms_review_application' ) ) {
+				$errors[] = __( 'Staff accounts cannot be used as member logins.', 'mms-membership' );
 			}
 		}
 
@@ -449,7 +486,8 @@ class MMS_Admin_Company {
 							'started_at'      => $started,
 							'amount'          => $amount,
 							'payment_ref'     => $pay_ref,
-							'create_account'  => $account ? '1' : '',
+							'account_mode'    => $account_mode,
+							'attach_account'  => $attach_account,
 							'account_username' => $account_username,
 						)
 					),
@@ -582,7 +620,9 @@ class MMS_Admin_Company {
 			);
 		}
 
-		if ( $will_create && '' !== $account_login && '' !== $account_password ) {
+		if ( $attach_user instanceof WP_User ) {
+			self::link_account( $app_id, $attach_user );
+		} elseif ( $will_create && '' !== $account_login && '' !== $account_password ) {
 			self::create_account(
 				$app_id,
 				$meta,
@@ -604,6 +644,80 @@ class MMS_Admin_Company {
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * Find a member account by email, username or user ID.
+	 *
+	 * @param string $value Email address, username or numeric user ID.
+	 * @return WP_User|null
+	 */
+	private static function find_account( $value ) {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return null;
+		}
+
+		if ( is_email( $value ) ) {
+			$user = get_user_by( 'email', sanitize_email( $value ) );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		if ( ctype_digit( $value ) ) {
+			$user = get_user_by( 'id', (int) $value );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		$login = MMS_Members::normalize_login( $value );
+		if ( '' !== $login ) {
+			$user = get_user_by( 'login', $login );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Attach a newly created company to an existing member account.
+	 *
+	 * No credentials are generated or emailed; the login is reused as-is.
+	 *
+	 * @param int     $app_id Application ID.
+	 * @param WP_User $user   Existing member account.
+	 * @return void
+	 */
+	private static function link_account( $app_id, $user ) {
+		MMS_Applications::link_member( $app_id, (int) $user->ID );
+
+		if ( '' === (string) get_user_meta( $user->ID, MMS_Members::META_APPLICATION, true ) ) {
+			update_user_meta( $user->ID, MMS_Members::META_APPLICATION, (int) $app_id );
+		}
+
+		MMS_Applications::log(
+			$app_id,
+			'member_account_linked',
+			sprintf(
+				/* translators: 1: user ID, 2: account email, 3: administrator display name */
+				__( 'Member account #%1$d (%2$s) attached to this company by %3$s.', 'mms-membership' ),
+				$user->ID,
+				$user->user_email,
+				wp_get_current_user()->display_name
+			),
+			get_current_user_id()
+		);
+
+		$application = MMS_Applications::get( $app_id );
+
+		if ( $application ) {
+			MMS_Members::notify_company_added( $application, MMS_Applications::get_meta( $app_id ), $user );
+		}
 	}
 
 	/**
@@ -651,6 +765,18 @@ class MMS_Admin_Company {
 			return array(
 				'member' => $member,
 				'sent'   => $sent,
+			);
+		}
+
+		if ( ! $member['created'] ) {
+			$account = get_userdata( $member['user_id'] );
+			$sent    = $account instanceof WP_User
+				? MMS_Members::notify_company_added( $application, $meta, $account )
+				: false;
+
+			return array(
+				'member' => $member,
+				'sent'   => (bool) $sent,
 			);
 		}
 

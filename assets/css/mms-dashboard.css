@@ -600,7 +600,13 @@
 	color: var(--mms-muted);
 }
 
-.mms-admin-ui .mms-account-fields.is-disabled {
+.mms-admin-ui .mms-account-fields,
+.mms-admin-ui .mms-attach-fields {
+	margin-top: 16px;
+}
+
+.mms-admin-ui .mms-account-fields.is-disabled,
+.mms-admin-ui .mms-attach-fields.is-disabled {
 	opacity: 0.55;
 }
 
@@ -642,6 +648,60 @@
 
 .mms-admin-ui .mms-member-password-form .mms-form-actions {
 	margin-top: 14px;
+}
+
+.mms-admin-ui .mms-member-links {
+	margin-top: 18px;
+	padding-top: 18px;
+	border-top: 1px solid var(--mms-line);
+}
+
+.mms-admin-ui .mms-member-links h3 {
+	margin: 0 0 4px;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--mms-ink);
+}
+
+.mms-admin-ui .mms-member-links > p {
+	margin: 0 0 12px;
+	font-size: 13px;
+	color: var(--mms-muted);
+}
+
+.mms-admin-ui .mms-account-companies {
+	display: grid;
+	gap: 6px;
+	margin: 0 0 16px;
+	padding: 0;
+	list-style: none;
+}
+
+.mms-admin-ui .mms-account-companies li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	border: 1px solid var(--mms-line);
+	border-radius: 10px;
+	background: #fbfcff;
+	font-size: 13px;
+}
+
+.mms-admin-ui .mms-account-companies a {
+	font-weight: 600;
+}
+
+.mms-admin-ui .mms-member-links form {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px dashed var(--mms-line);
+}
+
+.mms-admin-ui .mms-member-links form .mms-muted {
+	margin: 0 0 10px;
+	font-size: 12.5px;
 }
 
 .mms-admin-ui .mms-password-row {

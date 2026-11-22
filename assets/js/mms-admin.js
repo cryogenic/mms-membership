@@ -39,6 +39,14 @@
 	}
 
 	$( function () {
+		$( document ).on( 'submit', 'form[data-mms-confirm]', function ( event ) {
+			var message = $( this ).attr( 'data-mms-confirm' );
+
+			if ( message && ! window.confirm( message ) ) {
+				event.preventDefault();
+			}
+		} );
+
 		$( '.mms-settings-form' ).on( 'click', '[data-mms-add]', function () {
 			var $button = $( this );
 			var tableId = $button.data( 'mms-add' );
@@ -187,8 +195,9 @@
 		var $companyForm = $( '.mms-company-form' );
 
 		if ( $companyForm.length && window.mmsAdmin ) {
-			var $accountToggle = $( '#mms-create-account' );
+			var $accountMode = $( '#mms-account-mode' );
 			var $accountFields = $companyForm.find( '.mms-account-fields' );
+			var $attachFields = $companyForm.find( '.mms-attach-fields' );
 			var $username = $( '#mms-account-username' );
 			var $usernameStatus = $( '#mms-username-status' );
 			var $password = $( '#mms-account-password' );
@@ -259,11 +268,29 @@
 					.substring( 0, 60 );
 			};
 
-			var toggleAccountFields = function () {
-				var enabled = $accountToggle.is( ':checked' );
+			var currentMode = function () {
+				return $accountMode.val() || 'none';
+			};
 
-				$accountFields.toggleClass( 'is-disabled', ! enabled );
-				$accountFields.find( 'input' ).prop( 'disabled', ! enabled );
+			var toggleAccountFields = function () {
+				var mode = currentMode();
+				var creating = 'create' === mode;
+				var attaching = 'attach' === mode;
+
+				$accountFields.toggleClass( 'is-disabled', ! creating ).toggle( creating );
+				$accountFields.find( 'input' ).prop( 'disabled', ! creating );
+				$attachFields.toggleClass( 'is-disabled', ! attaching ).toggle( attaching );
+				$attachFields.find( 'input' ).prop( 'disabled', ! attaching );
+
+				if ( creating && ! usernameTouched && ! $.trim( $username.val() ) ) {
+					var suggestion = suggestUsername();
+
+					if ( suggestion ) {
+						$username.val( suggestion );
+						lastQuery = '';
+						checkUsername();
+					}
+				}
 			};
 
 			$username.on( 'input', function () {
@@ -283,7 +310,7 @@
 			} );
 
 			$email.on( 'input', function () {
-				if ( usernameTouched || $.trim( $username.val() ) ) {
+				if ( 'create' !== currentMode() || usernameTouched || $.trim( $username.val() ) ) {
 					return;
 				}
 
@@ -300,15 +327,15 @@
 				$password.val( randomPassword() ).trigger( 'focus' );
 			} );
 
-			$accountToggle.on( 'change', toggleAccountFields );
+			$accountMode.on( 'change', toggleAccountFields );
 			toggleAccountFields();
 
-			if ( $.trim( $username.val() ) ) {
+			if ( 'create' === currentMode() && $.trim( $username.val() ) ) {
 				checkUsername();
 			}
 
 			$companyForm.on( 'submit', function ( event ) {
-				if ( ! $accountToggle.is( ':checked' ) ) {
+				if ( 'create' !== currentMode() ) {
 					return;
 				}
 

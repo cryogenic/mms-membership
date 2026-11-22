@@ -39,8 +39,13 @@ class MMS_Certificate {
 			exit;
 		}
 
-		$user        = wp_get_current_user();
-		$application = MMS_Members::application_for_user( $user->ID );
+		$user           = wp_get_current_user();
+		$application_id = isset( $_GET['application_id'] ) ? absint( wp_unslash( $_GET['application_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$application    = MMS_Members::resolve_application( $user->ID, $application_id );
+
+		if ( is_wp_error( $application ) ) {
+			wp_die( esc_html( $application->get_error_message() ), '', array( 'response' => 403 ) );
+		}
 
 		if ( ! $application ) {
 			wp_die( esc_html__( 'No membership application is linked to this account.', 'mms-membership' ), 404 );

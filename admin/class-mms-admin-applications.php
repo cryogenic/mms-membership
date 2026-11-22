@@ -23,6 +23,8 @@ class MMS_Admin_Applications {
 	const NONCE_PASSWORD = 'mms_admin_member_password';
 	const NONCE_ACCOUNT  = 'mms_admin_member_account';
 	const NONCE_UPDATE   = 'mms_admin_member_account_update';
+	const NONCE_LINK     = 'mms_admin_member_link';
+	const NONCE_UNLINK   = 'mms_admin_member_unlink';
 	const PER_PAGE       = 20;
 
 	/**
@@ -40,6 +42,8 @@ class MMS_Admin_Applications {
 		add_action( 'admin_post_mms_admin_member_password', array( __CLASS__, 'handle_member_password' ) );
 		add_action( 'admin_post_mms_admin_member_create', array( __CLASS__, 'handle_member_account_create' ) );
 		add_action( 'admin_post_mms_admin_member_update', array( __CLASS__, 'handle_member_account_update' ) );
+		add_action( 'admin_post_mms_admin_member_link', array( __CLASS__, 'handle_member_link' ) );
+		add_action( 'admin_post_mms_admin_member_unlink', array( __CLASS__, 'handle_member_unlink' ) );
 	}
 
 	/**
@@ -358,6 +362,37 @@ class MMS_Admin_Applications {
 		// Use the admin-entered account email without changing the application's PIC details.
 		$meta['pic_email'] = $email;
 
+		$existing = get_user_by( 'email', $email );
+
+		if ( $existing instanceof WP_User ) {
+			if ( user_can( $existing, 'mms_review_application' ) ) {
+				self::back_to( $application_id, 'member_account_admin' );
+			}
+
+			MMS_Applications::link_member( $application_id, (int) $existing->ID );
+
+			if ( '' === (string) get_user_meta( $existing->ID, MMS_Members::META_APPLICATION, true ) ) {
+				update_user_meta( $existing->ID, MMS_Members::META_APPLICATION, $application_id );
+			}
+
+			MMS_Applications::log(
+				$application_id,
+				'member_account_linked',
+				sprintf(
+					/* translators: 1: user ID, 2: account email, 3: administrator display name */
+					__( 'Member account #%1$d (%2$s) linked by %3$s.', 'mms-membership' ),
+					$existing->ID,
+					$existing->user_email,
+					wp_get_current_user()->display_name
+				),
+				get_current_user_id()
+			);
+
+			MMS_Members::notify_company_added( $application, $meta, $existing );
+
+			self::back_to( $application_id, 'member_account_linked' );
+		}
+
 		$login = isset( $_POST['user_login'] ) ? MMS_Members::normalize_login( wp_unslash( $_POST['user_login'] ) ) : '';
 
 		// Passwords keep every character the admin typed; only the length is enforced.
@@ -491,6 +526,172 @@ class MMS_Admin_Applications {
 		}
 
 		self::back_to( $application_id, 'member_account_updated' );
+	}
+
+	/**
+	 * Attach an existing member account to a company.
+	 *
+	 * @return void
+	 */
+	public static function handle_member_link() {
+		if ( ! current_user_can( 'mms_review_application' ) ) {
+			wp_die( esc_html__( 'You do not have permission to link member accounts.', 'mms-membership' ), 403 );
+		}
+
+		check_admin_referer( self::NONCE_LINK );
+
+		$application_id = isset( $_POST['application_id'] ) ? absint( $_POST['application_id'] ) : 0;
+		$application    = MMS_Applications::get( $application_id );
+
+		if ( ! $application ) {
+			wp_die( esc_html__( 'Application not found.', 'mms-membership' ), 404 );
+		}
+
+		$lookup = isset( $_POST['account_lookup'] ) ? sanitize_text_field( wp_unslash( $_POST['account_lookup'] ) ) : '';
+		$user   = self::find_account( $lookup );
+
+		if ( ! $user ) {
+			self::back_to( $application_id, 'member_link_not_found' );
+		}
+
+		if ( user_can( $user, 'mms_review_application' ) ) {
+			self::back_to( $application_id, 'member_link_admin' );
+		}
+
+		$current = isset( $application['member_user_id'] ) ? (int) $application['member_user_id'] : 0;
+
+		if ( $current === (int) $user->ID ) {
+			self::back_to( $application_id, 'member_link_same' );
+		}
+
+		if ( $current ) {
+			self::back_to( $application_id, 'member_link_replace' );
+		}
+
+		MMS_Applications::link_member( $application_id, (int) $user->ID );
+
+		if ( '' === (string) get_user_meta( $user->ID, MMS_Members::META_APPLICATION, true ) ) {
+			update_user_meta( $user->ID, MMS_Members::META_APPLICATION, $application_id );
+		}
+
+		MMS_Applications::log(
+			$application_id,
+			'member_account_linked',
+			sprintf(
+				/* translators: 1: user ID, 2: account email, 3: administrator display name */
+				__( 'Member account #%1$d (%2$s) linked by %3$s.', 'mms-membership' ),
+				$user->ID,
+				$user->user_email,
+				wp_get_current_user()->display_name
+			),
+			get_current_user_id()
+		);
+
+		MMS_Members::notify_company_added( $application, MMS_Applications::get_meta( $application_id ), $user );
+
+		self::back_to( $application_id, 'member_account_linked' );
+	}
+
+	/**
+	 * Detach a company from its member account without deleting the account.
+	 *
+	 * @return void
+	 */
+	public static function handle_member_unlink() {
+		if ( ! current_user_can( 'mms_review_application' ) ) {
+			wp_die( esc_html__( 'You do not have permission to unlink member accounts.', 'mms-membership' ), 403 );
+		}
+
+		check_admin_referer( self::NONCE_UNLINK );
+
+		$application_id = isset( $_POST['application_id'] ) ? absint( $_POST['application_id'] ) : 0;
+		$application    = MMS_Applications::get( $application_id );
+
+		if ( ! $application ) {
+			wp_die( esc_html__( 'Application not found.', 'mms-membership' ), 404 );
+		}
+
+		$user_id = isset( $application['member_user_id'] ) ? (int) $application['member_user_id'] : 0;
+
+		if ( ! $user_id ) {
+			self::back_to( $application_id, 'member_link_none' );
+		}
+
+		$user = get_userdata( $user_id );
+
+		if ( $user instanceof WP_User && user_can( $user, 'mms_review_application' ) ) {
+			self::back_to( $application_id, 'member_unlink_admin' );
+		}
+
+		MMS_Applications::link_member( $application_id, 0 );
+
+		// Legacy meta must not keep granting ownership after the row is unlinked.
+		if ( (int) get_user_meta( $user_id, MMS_Members::META_APPLICATION, true ) === $application_id ) {
+			$remaining = MMS_Applications::for_member( $user_id, array( 'limit' => 1 ) );
+
+			if ( $remaining ) {
+				update_user_meta( $user_id, MMS_Members::META_APPLICATION, (int) $remaining[0]['id'] );
+			} else {
+				delete_user_meta( $user_id, MMS_Members::META_APPLICATION );
+			}
+		}
+
+		if ( (int) get_user_meta( $user_id, MMS_Members::META_ACTIVE_APPLICATION, true ) === $application_id ) {
+			delete_user_meta( $user_id, MMS_Members::META_ACTIVE_APPLICATION );
+		}
+
+		MMS_Applications::log(
+			$application_id,
+			'member_account_unlinked',
+			sprintf(
+				/* translators: 1: user ID, 2: account email, 3: administrator display name */
+				__( 'Member account #%1$d (%2$s) unlinked by %3$s.', 'mms-membership' ),
+				$user_id,
+				$user instanceof WP_User ? $user->user_email : '—',
+				wp_get_current_user()->display_name
+			),
+			get_current_user_id()
+		);
+
+		self::back_to( $application_id, 'member_account_unlinked' );
+	}
+
+	/**
+	 * Find a member account by email, username or user ID.
+	 *
+	 * @param string $value Email address, username or numeric user ID.
+	 * @return WP_User|null
+	 */
+	private static function find_account( $value ) {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return null;
+		}
+
+		if ( is_email( $value ) ) {
+			$user = get_user_by( 'email', sanitize_email( $value ) );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		if ( ctype_digit( $value ) ) {
+			$user = get_user_by( 'id', (int) $value );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		$login = MMS_Members::normalize_login( $value );
+		if ( '' !== $login ) {
+			$user = get_user_by( 'login', $login );
+			if ( $user instanceof WP_User ) {
+				return $user;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -958,6 +1159,21 @@ class MMS_Admin_Applications {
 		$member_password = MMS_Members::generate_password();
 		$member_pic_email = isset( $meta['pic_email'] ) ? sanitize_email( $meta['pic_email'] ) : '';
 		$member_login     = MMS_Members::suggest_login( $member_pic_email );
+		$account_companies = array();
+
+		if ( $member_user ) {
+			foreach ( MMS_Members::applications_for_user( $member_user->ID ) as $account_company ) {
+				$company_meta = MMS_Applications::get_meta( (int) $account_company['id'] );
+				$company_name = isset( $company_meta['company_name'] ) ? trim( (string) $company_meta['company_name'] ) : '';
+				$account_companies[] = array(
+					'id'     => (int) $account_company['id'],
+					'label'  => '' !== $company_name
+						? $company_name
+						: ( '' !== (string) $account_company['reference'] ? $account_company['reference'] : '#' . (int) $account_company['id'] ),
+					'status' => $account_company['status'],
+				);
+			}
+		}
 
 		if ( MMS_Status::APPROVED_UNPAID === $application['status'] && ! MMS_Payments::pending_invoice( $id, MMS_Payments::KIND_INITIAL ) ) {
 			MMS_Payments::ensure_invoice( $application, $meta, $type, MMS_Payments::KIND_INITIAL );
@@ -1054,6 +1270,22 @@ class MMS_Admin_Applications {
 				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The member account details could not be saved. Check the username and email address, then try again.', 'mms-membership' ); ?></p></div>
 			<?php elseif ( 'member_account_admin' === $message ) : ?>
 				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'The linked account has administrator access. Edit it from the Users screen instead.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_linked' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'This company is now linked to the existing member account.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_account_unlinked' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'This company was unlinked from the member account. The account and its other companies were not changed.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_link_not_found' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'No account matches that email, username or user ID. Check the spelling and try again.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_link_admin' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Administrator accounts cannot be linked to a company.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_link_same' === $message ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'This company is already linked to that account.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_link_replace' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'This company is linked to a different account. Unlink it first, then attach the correct account.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_link_none' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'This company is not linked to any member account, so there is nothing to unlink.', 'mms-membership' ); ?></p></div>
+			<?php elseif ( 'member_unlink_admin' === $message ) : ?>
+				<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'Administrator accounts cannot be unlinked from this screen.', 'mms-membership' ); ?></p></div>
 			<?php endif; ?>
 
 			<div class="mms-detail-summary">
@@ -1161,7 +1393,26 @@ class MMS_Admin_Applications {
 
 			<div class="mms-card mms-member-account">
 				<?php if ( ! $member_user ) : ?>
-					<p class="mms-muted"><?php esc_html_e( 'No member account is linked to this company yet. Create one below — the login details will be emailed immediately.', 'mms-membership' ); ?></p>
+					<p class="mms-muted"><?php esc_html_e( 'No member account is linked to this company yet. Attach an existing login, or create a new account below.', 'mms-membership' ); ?></p>
+
+					<form class="mms-member-password-form mms-member-attach-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="mms_admin_member_link" />
+						<input type="hidden" name="application_id" value="<?php echo (int) $application['id']; ?>" />
+						<?php wp_nonce_field( self::NONCE_LINK ); ?>
+
+						<h3><?php esc_html_e( 'Attach to an existing account', 'mms-membership' ); ?></h3>
+						<p><?php esc_html_e( 'Use this when the member already signs in for another company. The account keeps its username, email and password, and this company appears in their portal.', 'mms-membership' ); ?></p>
+
+						<div class="mms-form-field">
+							<label for="mms-member-attach-lookup"><?php esc_html_e( 'Account email, username or user ID', 'mms-membership' ); ?> <span class="mms-req">*</span></label>
+							<input type="text" id="mms-member-attach-lookup" name="account_lookup" value="" autocomplete="off" spellcheck="false" maxlength="100" required />
+							<span class="mms-form-hint"><?php esc_html_e( 'No new login details are sent when an account is attached.', 'mms-membership' ); ?></span>
+						</div>
+
+						<div class="mms-form-actions">
+							<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Link existing account', 'mms-membership' ); ?></button>
+						</div>
+					</form>
 
 					<form class="mms-member-password-form mms-member-create-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="mms_admin_member_create" />
@@ -1259,6 +1510,32 @@ class MMS_Admin_Applications {
 								<button type="submit" class="mms-btn mms-btn-primary"><?php esc_html_e( 'Save password & email member', 'mms-membership' ); ?></button>
 							</div>
 						</form>
+
+						<div class="mms-member-links">
+							<h3><?php esc_html_e( 'Companies on this account', 'mms-membership' ); ?></h3>
+							<p class="mms-muted"><?php esc_html_e( 'This login can switch between its companies in the member portal. Password changes and resets apply to every company on the account.', 'mms-membership' ); ?></p>
+							<ul class="mms-account-companies">
+								<?php foreach ( $account_companies as $account_company ) : ?>
+									<li>
+										<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::PAGE . '&application=' . (int) $account_company['id'] ) ); ?>"><?php echo esc_html( $account_company['label'] ); ?></a>
+										<span class="mms-pill mms-status mms-status-<?php echo esc_attr( $account_company['status'] ); ?>"><?php echo esc_html( MMS_Status::label( $account_company['status'] ) ); ?></span>
+										<?php if ( (int) $account_company['id'] === (int) $application['id'] ) : ?>
+											<span class="mms-muted"><?php esc_html_e( 'Current company', 'mms-membership' ); ?></span>
+										<?php endif; ?>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-mms-confirm="<?php esc_attr_e( 'Unlink this company from the member account? The account and its other companies are not changed.', 'mms-membership' ); ?>">
+								<input type="hidden" name="action" value="mms_admin_member_unlink" />
+								<input type="hidden" name="application_id" value="<?php echo (int) $application['id']; ?>" />
+								<?php wp_nonce_field( self::NONCE_UNLINK ); ?>
+								<p class="mms-muted"><?php esc_html_e( 'Unlinking only removes this company from the portal. The login, membership number, invoices and certificate stay as they are.', 'mms-membership' ); ?></p>
+								<div class="mms-form-actions">
+									<button type="submit" class="mms-btn mms-btn-outline"><?php esc_html_e( 'Unlink this company from the account', 'mms-membership' ); ?></button>
+								</div>
+							</form>
+						</div>
 					<?php endif; ?>
 				<?php endif; ?>
 			</div>
@@ -1667,8 +1944,8 @@ class MMS_Admin_Applications {
 			MMS_Applications::clear_token( $application_id );
 		}
 
-		$meta             = MMS_Applications::get_meta( $application_id );
-		$set_password_url = '';
+		$meta              = MMS_Applications::get_meta( $application_id );
+		$set_password_url  = '';
 
 		if ( MMS_Status::APPROVED_UNPAID === $decision ) {
 			$member = MMS_Members::create_from_application( $application, $meta );
@@ -1698,15 +1975,28 @@ class MMS_Admin_Applications {
 					get_current_user_id()
 				);
 
-				$password_token   = MMS_Members::issue_set_password_token( $member['user_id'] );
-				$set_password_url = MMS_Members::set_password_url( $member['user_id'], $password_token );
+				if ( $member['created'] ) {
+					$password_token   = MMS_Members::issue_set_password_token( $member['user_id'] );
+					$set_password_url = MMS_Members::set_password_url( $member['user_id'], $password_token );
 
-				MMS_Applications::log(
-					$application_id,
-					'set_password_link',
-					__( 'One-time set-password link generated (valid 72 hours).', 'mms-membership' ),
-					get_current_user_id()
-				);
+					MMS_Applications::log(
+						$application_id,
+						'set_password_link',
+						__( 'One-time set-password link generated (valid 72 hours).', 'mms-membership' ),
+						get_current_user_id()
+					);
+				} else {
+					// Existing login: notify the account instead of sending credentials.
+					$member_user = get_userdata( $member['user_id'] );
+
+					if ( $member_user instanceof WP_User ) {
+						MMS_Members::notify_company_added(
+							array_merge( $application, array( 'status' => $decision ) ),
+							$meta,
+							$member_user
+						);
+					}
+				}
 			}
 
 			$invoice = MMS_Payments::ensure_invoice(
@@ -1835,7 +2125,7 @@ class MMS_Admin_Applications {
 		$subject = '';
 		$lines   = array();
 
-		if ( MMS_Status::APPROVED_UNPAID === $decision && '' !== $set_password_url ) {
+		if ( MMS_Status::APPROVED_UNPAID === $decision ) {
 			self::send_approval_email( $application, $meta, $reference, $type_name, $note, $set_password_url );
 			return;
 		}
@@ -1946,7 +2236,7 @@ class MMS_Admin_Applications {
 	 * @param string $reference Reference number.
 	 * @param string $type_name Membership type label.
 	 * @param string $note Reviewer note.
-	 * @param string $set_password_url One-time set-password URL.
+	 * @param string $set_password_url One-time set-password URL (empty for existing accounts).
 	 * @return void
 	 */
 	private static function send_approval_email( $application, $meta, $reference, $type_name, $note, $set_password_url ) {
@@ -1988,31 +2278,41 @@ class MMS_Admin_Applications {
 				. nl2br( esc_html( $note ) ) . '</p>';
 		}
 
+		if ( '' !== $set_password_url ) {
+			$access_html = '<p style="margin:0 0 12px;">' . esc_html__( 'Set your password to access the member portal:', 'mms-membership' ) . '</p>'
+				. '<p style="margin:0 0 8px;"><a href="' . esc_url( $set_password_url ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Set your password', 'mms-membership' ) . '</a></p>'
+				. '<p style="margin:0 0 20px;font-size:13px;color:#646970;">' . esc_html__( 'This one-time link is valid for 72 hours. If it has expired, contact MACM for a new link.', 'mms-membership' ) . '</p>'
+				. '<p style="margin:0 0 4px;">' . esc_html__( 'After setting your password, log in to view your membership status and complete the payment:', 'mms-membership' ) . '</p>'
+				. '<p style="margin:0 0 20px;"><a href="' . esc_url( $login ) . '" style="color:#0f4c5c;font-weight:600;">' . esc_html__( 'Log in & pay', 'mms-membership' ) . '</a></p>';
+		} else {
+			$access_html = '<p style="margin:0 0 4px;">' . esc_html__( 'This company has been added to your existing member account. Log in with your usual username and password to view your membership status and complete the payment:', 'mms-membership' ) . '</p>'
+				. '<p style="margin:0 0 8px;"><a href="' . esc_url( $login ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Log in to the member portal', 'mms-membership' ) . '</a></p>'
+				. '<p style="margin:0 0 20px;font-size:13px;color:#646970;">' . esc_html__( 'If you need help signing in, contact MACM.', 'mms-membership' ) . '</p>';
+		}
+
 		$body = '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f0f1;font-family:Arial,Helvetica,sans-serif;color:#1d2327;">'
 			. '<div style="max-width:600px;margin:0 auto;padding:24px 12px;">'
 			. '<div style="background:#ffffff;border-radius:6px;padding:32px;">'
 			. '<div style="margin:0 0 16px;font-size:15px;line-height:1.55;">' . $message . '</div>'
 			. '<table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:15px;">' . $details . '</table>'
-			. '<p style="margin:0 0 12px;">' . esc_html__( 'Set your password to access the member portal:', 'mms-membership' ) . '</p>'
-			. '<p style="margin:0 0 8px;"><a href="' . esc_url( $set_password_url ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Set your password', 'mms-membership' ) . '</a></p>'
-			. '<p style="margin:0 0 20px;font-size:13px;color:#646970;">' . esc_html__( 'This one-time link is valid for 72 hours. If it has expired, contact MACM for a new link.', 'mms-membership' ) . '</p>'
-			. '<p style="margin:0 0 4px;">' . esc_html__( 'After setting your password, log in to view your membership status and complete the payment:', 'mms-membership' ) . '</p>'
-			. '<p style="margin:0 0 20px;"><a href="' . esc_url( $login ) . '" style="color:#0f4c5c;font-weight:600;">' . esc_html__( 'Log in & pay', 'mms-membership' ) . '</a></p>'
+			. $access_html
 			. $note_html
 			. '<p style="margin:24px 0 0;font-size:13px;color:#646970;">' . esc_html( $site ) . '</p>'
 			. '</div></div></body></html>';
 
 		$sent = wp_mail( $email, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
 
+		$log_message = '' !== $set_password_url
+			/* translators: %s: recipient email */
+			? sprintf( __( 'Approval email with set-password link sent to %s.', 'mms-membership' ), $email )
+			/* translators: %s: recipient email */
+			: sprintf( __( 'Approval email sent to %s.', 'mms-membership' ), $email );
+
 		MMS_Applications::log(
 			$application['id'],
 			$sent ? 'email_sent' : 'email_failed',
 			$sent
-				? sprintf(
-					/* translators: %s: recipient email */
-					__( 'Approval email with set-password link sent to %s.', 'mms-membership' ),
-					$email
-				)
+				? $log_message
 				: __( 'Approval email could not be sent — check the site mail configuration.', 'mms-membership' )
 		);
 	}

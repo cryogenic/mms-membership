@@ -16,9 +16,10 @@ class MMS_Members {
 
 	const ROLE = 'mms_member';
 
-	const META_APPLICATION      = 'mms_application_id';
-	const META_SETPW_HASH       = '_mms_setpw_hash';
-	const META_SETPW_EXPIRES    = '_mms_setpw_expires';
+	const META_APPLICATION        = 'mms_application_id';
+	const META_ACTIVE_APPLICATION = '_mms_active_application';
+	const META_SETPW_HASH         = '_mms_setpw_hash';
+	const META_SETPW_EXPIRES      = '_mms_setpw_expires';
 
 	/**
 	 * Set-password links are valid for 72 hours.
@@ -295,6 +296,94 @@ class MMS_Members {
 	}
 
 	/**
+	 * Tell a member that a company was added to their existing account.
+	 *
+	 * No username or password is sent; the member keeps their current login.
+	 *
+	 * @param array   $application Application row (status may be overridden by the caller).
+	 * @param array   $meta        Company / PIC meta row.
+	 * @param WP_User $user        Existing member account.
+	 * @return bool Whether the email was accepted for delivery.
+	 */
+	public static function notify_company_added( $application, $meta, $user ) {
+		if ( ! $user instanceof WP_User || '' === (string) $user->user_email || ! is_email( $user->user_email ) ) {
+			return false;
+		}
+
+		$app_id    = isset( $application['id'] ) ? (int) $application['id'] : 0;
+		$reference = isset( $application['reference'] ) && '' !== (string) $application['reference']
+			? (string) $application['reference']
+			: '#' . $app_id;
+		$company   = isset( $meta['company_name'] ) ? (string) $meta['company_name'] : '';
+		$name      = '';
+
+		if ( ! empty( $meta['pic_name'] ) ) {
+			$name = (string) $meta['pic_name'];
+		} elseif ( '' !== $company ) {
+			$name = $company;
+		} else {
+			$name = $user->display_name;
+		}
+
+		$type      = isset( $application['membership_type'] ) ? MMS_Membership_Types::get_type( $application['membership_type'] ) : null;
+		$type_name = $type ? $type['label'] : '';
+		$status    = isset( $application['status'] ) ? (string) $application['status'] : '';
+
+		$context = array(
+			'name'            => $name,
+			'company_name'    => $company,
+			'reference'       => $reference,
+			'membership_type' => $type_name,
+			'membership_no'   => isset( $application['membership_no'] ) ? (string) $application['membership_no'] : '',
+		);
+
+		$subject = MMS_Emails::subject( 'company', $context );
+		$message = MMS_Emails::body( 'company', $context );
+
+		$row = '<tr><td style="padding:6px 12px 6px 0;color:#646970;">%1$s</td><td style="padding:6px 0;font-weight:600;">%2$s</td></tr>';
+
+		$details = sprintf( $row, esc_html__( 'Company', 'mms-membership' ), esc_html( '' !== $company ? $company : '—' ) );
+		$details .= sprintf( $row, esc_html__( 'Reference number', 'mms-membership' ), esc_html( $reference ) );
+
+		if ( '' !== (string) $context['membership_no'] ) {
+			$details .= sprintf( $row, esc_html__( 'Membership number', 'mms-membership' ), esc_html( (string) $context['membership_no'] ) );
+		}
+
+		if ( '' !== $status ) {
+			$details .= sprintf( $row, esc_html__( 'Status', 'mms-membership' ), esc_html( MMS_Status::label( $status ) ) );
+		}
+
+		$portal = self::portal_url();
+		$site   = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+
+		$body = '<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f0f1;font-family:Arial,Helvetica,sans-serif;color:#1d2327;">'
+			. '<div style="max-width:600px;margin:0 auto;padding:24px 12px;">'
+			. '<div style="background:#ffffff;border-radius:6px;padding:32px;">'
+			. '<div style="margin:0 0 16px;font-size:15px;line-height:1.55;">' . $message . '</div>'
+			. '<table style="width:100%;border-collapse:collapse;margin:0 0 20px;font-size:15px;">' . $details . '</table>'
+			. '<p style="margin:0 0 8px;"><a href="' . esc_url( $portal ) . '" style="display:inline-block;padding:12px 22px;background:#0f4c5c;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:600;">' . esc_html__( 'Open the member portal', 'mms-membership' ) . '</a></p>'
+			. '<p style="margin:0 0 20px;font-size:13px;color:#646970;">' . esc_html__( 'Sign in with your existing username and password. If you were not expecting this change, contact MACM.', 'mms-membership' ) . '</p>'
+			. '<p style="margin:24px 0 0;font-size:13px;color:#646970;">' . esc_html( $site ) . '</p>'
+			. '</div></div></body></html>';
+
+		$sent = wp_mail( $user->user_email, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
+
+		if ( $app_id ) {
+			MMS_Applications::log(
+				$app_id,
+				$sent ? 'email_sent' : 'email_failed',
+				$sent
+					/* translators: %s: recipient email */
+					? sprintf( __( 'Company-added email sent to %s.', 'mms-membership' ), $user->user_email )
+					/* translators: %s: recipient email */
+					: sprintf( __( 'Company-added email could not be sent to %s — check the site mail configuration.', 'mms-membership' ), $user->user_email )
+			);
+		}
+
+		return (bool) $sent;
+	}
+
+	/**
 	 * Remove any outstanding set-password token.
 	 *
 	 * @param int $user_id User ID.
@@ -343,33 +432,174 @@ class MMS_Members {
 	}
 
 	/**
+	 * All applications (companies) linked to a member account.
+	 *
+	 * Includes legacy rows linked only through the old single-application meta.
+	 *
+	 * @param int $user_id User ID.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function applications_for_user( $user_id ) {
+		$user_id = (int) $user_id;
+		if ( ! $user_id || ! class_exists( 'MMS_Applications' ) ) {
+			return array();
+		}
+
+		$applications = MMS_Applications::for_member( $user_id );
+		$seen         = array();
+
+		foreach ( $applications as $application ) {
+			$seen[ (int) $application['id'] ] = true;
+		}
+
+		$legacy_id = (int) get_user_meta( $user_id, self::META_APPLICATION, true );
+		if ( $legacy_id && ! isset( $seen[ $legacy_id ] ) ) {
+			$legacy = MMS_Applications::get( $legacy_id );
+			if ( $legacy && self::user_owns_application( $user_id, $legacy ) ) {
+				$applications[] = $legacy;
+			}
+		}
+
+		return $applications;
+	}
+
+	/**
+	 * Whether an application belongs to a member account.
+	 *
+	 * @param int   $user_id     User ID.
+	 * @param array $application Application row.
+	 * @return bool
+	 */
+	public static function user_owns_application( $user_id, $application ) {
+		$user_id = (int) $user_id;
+
+		if ( ! $user_id || ! is_array( $application ) || empty( $application['id'] ) ) {
+			return false;
+		}
+
+		$member_id = isset( $application['member_user_id'] ) ? (int) $application['member_user_id'] : 0;
+		if ( $member_id === $user_id ) {
+			return true;
+		}
+
+		// Legacy records may not have member_user_id backfilled yet.
+		return 0 === $member_id && (int) get_user_meta( $user_id, self::META_APPLICATION, true ) === (int) $application['id'];
+	}
+
+	/**
+	 * Resolve one application for a member, enforcing ownership.
+	 *
+	 * With no application ID: the remembered company, otherwise the newest one.
+	 *
+	 * @param int $user_id        User ID.
+	 * @param int $application_id Optional application ID.
+	 * @return array<string,mixed>|WP_Error|null Null when the account has no companies.
+	 */
+	public static function resolve_application( $user_id, $application_id = 0 ) {
+		$user_id = (int) $user_id;
+		if ( ! $user_id || ! class_exists( 'MMS_Applications' ) ) {
+			return null;
+		}
+
+		$application_id = (int) $application_id;
+
+		if ( $application_id ) {
+			$application = MMS_Applications::get( $application_id );
+
+			if ( ! $application ) {
+				return new WP_Error( 'mms_application_not_found', __( 'That company record could not be found.', 'mms-membership' ) );
+			}
+
+			if ( ! self::user_owns_application( $user_id, $application ) ) {
+				return new WP_Error( 'mms_application_forbidden', __( 'That company is not linked to this account.', 'mms-membership' ) );
+			}
+
+			return $application;
+		}
+
+		$active_id = self::active_application_id( $user_id );
+		if ( $active_id ) {
+			$active = MMS_Applications::get( $active_id );
+			if ( $active ) {
+				return $active;
+			}
+		}
+
+		$applications = self::applications_for_user( $user_id );
+
+		return $applications ? $applications[0] : null;
+	}
+
+	/**
+	 * Remembered company for an account, if it still belongs to them.
+	 *
+	 * @param int $user_id User ID.
+	 * @return int Application ID (0 when none).
+	 */
+	public static function active_application_id( $user_id ) {
+		$user_id = (int) $user_id;
+		if ( ! $user_id ) {
+			return 0;
+		}
+
+		$application_id = (int) get_user_meta( $user_id, self::META_ACTIVE_APPLICATION, true );
+		if ( ! $application_id ) {
+			return 0;
+		}
+
+		$application = MMS_Applications::get( $application_id );
+
+		if ( ! $application || ! self::user_owns_application( $user_id, $application ) ) {
+			delete_user_meta( $user_id, self::META_ACTIVE_APPLICATION );
+			return 0;
+		}
+
+		return $application_id;
+	}
+
+	/**
+	 * Remember the company an account last worked with.
+	 *
+	 * @param int $user_id        User ID.
+	 * @param int $application_id Application ID (0 clears the selection).
+	 * @return bool
+	 */
+	public static function set_active_application( $user_id, $application_id ) {
+		$user_id        = (int) $user_id;
+		$application_id = (int) $application_id;
+
+		if ( ! $user_id ) {
+			return false;
+		}
+
+		if ( ! $application_id ) {
+			delete_user_meta( $user_id, self::META_ACTIVE_APPLICATION );
+			return true;
+		}
+
+		$application = MMS_Applications::get( $application_id );
+		if ( ! $application || ! self::user_owns_application( $user_id, $application ) ) {
+			return false;
+		}
+
+		update_user_meta( $user_id, self::META_ACTIVE_APPLICATION, $application_id );
+
+		return true;
+	}
+
+	/**
 	 * Application linked to a member account.
+	 *
+	 * Kept for existing callers; use resolve_application() when an explicit
+	 * company ID must be validated.
 	 *
 	 * @param int $user_id User ID.
 	 * @return array<string,mixed>|null
 	 */
 	public static function application_for_user( $user_id ) {
-		$application = MMS_Applications::get_by_member( $user_id );
+		$application = self::resolve_application( $user_id );
 
-		if ( $application ) {
-			return $application;
-		}
-
-		$application_id = (int) get_user_meta( $user_id, self::META_APPLICATION, true );
-		if ( ! $application_id ) {
-			return null;
-		}
-
-		$application = MMS_Applications::get( $application_id );
-		if ( ! $application ) {
-			return null;
-		}
-
-		if ( ! empty( $application['member_user_id'] ) && (int) $application['member_user_id'] !== (int) $user_id ) {
-			return null;
-		}
-
-		return $application;
+		return is_wp_error( $application ) ? null : $application;
 	}
 
 	/**

@@ -31,6 +31,7 @@ class MMS_Emails {
 			'payment'  => __( 'Payment received — receipt ready', 'mms-membership' ),
 			'account'  => __( 'Member account — login details', 'mms-membership' ),
 			'password' => __( 'Member password — reset by admin', 'mms-membership' ),
+			'company'  => __( 'Existing account — new company added', 'mms-membership' ),
 		);
 	}
 
@@ -48,8 +49,7 @@ class MMS_Emails {
 					esc_html__( 'Dear %s,', 'mms-membership' ),
 					'{name}'
 				) . '</p>'
-					. '<p>' . esc_html__( 'Good news — your membership application has been approved. Your membership will be activated once payment is received.', 'mms-membership' ) . '</p>'
-					. '<p>' . esc_html__( 'Please set your password using the button below, then log in to the member portal to complete the payment.', 'mms-membership' ) . '</p>',
+					. '<p>' . esc_html__( 'Good news — your membership application has been approved. Your membership will be activated once payment is received.', 'mms-membership' ) . '</p>',
 			),
 			'payment'  => array(
 				'subject' => __( 'Payment received — membership {membership_no}', 'mms-membership' ),
@@ -79,6 +79,16 @@ class MMS_Emails {
 				) . '</p>'
 					. '<p>' . esc_html__( 'The password for your member account has been reset by MACM. Use the login details below to sign in to the member portal.', 'mms-membership' ) . '</p>'
 					. '<p>' . esc_html__( 'If you did not expect this change, contact MACM immediately.', 'mms-membership' ) . '</p>',
+			),
+			'company'  => array(
+				'subject' => __( 'A new company has been added to your account — {company_name}', 'mms-membership' ),
+				'body'    => '<p>' . sprintf(
+					/* translators: %s: Person In Charge name */
+					esc_html__( 'Dear %s,', 'mms-membership' ),
+					'{name}'
+				) . '</p>'
+					. '<p>' . esc_html__( 'A new company, {company_name} ({reference}), has been added to your member account.', 'mms-membership' ) . '</p>'
+					. '<p>' . esc_html__( 'Sign in with your usual username and password to view its status, invoices and certificate. No new login details are needed.', 'mms-membership' ) . '</p>',
 			),
 		);
 	}

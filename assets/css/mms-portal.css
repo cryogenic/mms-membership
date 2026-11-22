@@ -124,6 +124,76 @@
 	color: var(--p-blue);
 }
 
+/* Company switcher */
+.mms-portal .mms-portal-companies {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 16px;
+	margin: 0 0 18px;
+	padding: 12px 16px;
+	border: 1px solid var(--p-line);
+	border-radius: 16px;
+	background: #fff;
+	box-shadow: 0 8px 20px rgba(11, 31, 82, 0.05);
+}
+
+.mms-portal .mms-portal-companies-label {
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #98a0b5;
+}
+
+.mms-portal .mms-portal-company-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.mms-portal .mms-portal-company {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 12px;
+	border: 1px solid var(--p-line);
+	border-radius: 999px;
+	background: var(--p-soft);
+	color: var(--p-ink);
+	font-size: 12.5px;
+	text-decoration: none;
+}
+
+.mms-portal a.mms-portal-company:hover,
+.mms-portal a.mms-portal-company:focus {
+	border-color: #c9d4ee;
+	background: #f4f7ff;
+	color: var(--p-blue);
+}
+
+.mms-portal .mms-portal-company.is-active {
+	border-color: var(--p-navy);
+	background: var(--p-navy);
+	color: #fff;
+}
+
+.mms-portal .mms-portal-company-status {
+	padding: 2px 7px;
+	border-radius: 999px;
+	background: rgba(11, 31, 82, 0.08);
+	color: var(--p-muted);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.mms-portal .mms-portal-company.is-active .mms-portal-company-status {
+	background: rgba(255, 255, 255, 0.16);
+	color: #fff;
+}
+
 /* Hero */
 .mms-portal .mms-portal-hero {
 	position: relative;
